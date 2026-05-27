@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const Machine = require("../models/Machine");
+const Machine = require("../models/machine");
 
 // GET /api/machines  →  fetch all machines (newest first)
 router.get("/", async (req, res) => {
