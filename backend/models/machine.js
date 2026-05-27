@@ -1,0 +1,68 @@
+const mongoose = require("mongoose");
+
+const machineSchema = new mongoose.Schema(
+  {
+    category: {
+      type: String,
+      required: true,
+      enum: ["Excavator", "Concrete Pump", "Fiori", "JCB", "Crane"],
+    },
+    company: {
+      type: String,
+      required: true,
+    },
+    model: {
+      type: String,
+      required: true,
+    },
+    image: {
+      type: String,
+      default: "/excavator.webp",
+    },
+    location: {
+      type: String,
+      required: true,
+    },
+    pricePerDay: {
+      type: Number,
+      required: true,
+    },
+    modelYear: {
+      type: Number,
+    },
+    hoursUsed: {
+      type: Number,
+    },
+
+    // ── Availability ──────────────────────────────────────────
+    // "yes"  → machine is available right now
+    // "no"   → machine is currently busy; availableFrom holds the date
+    availability: {
+      type: String,
+      enum: ["yes", "no"],
+      default: "yes",
+    },
+    availableFrom: {
+      type: Date,   // null when availability === "yes"
+      default: null,
+    },
+    // ─────────────────────────────────────────────────────────
+
+    ownerName: {
+      type: String,
+      required: true,
+    },
+    ownerContact: {
+      type: String,
+      required: true,
+    },
+    description: {
+      type: String,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+module.exports = mongoose.model("Machine", machineSchema);
