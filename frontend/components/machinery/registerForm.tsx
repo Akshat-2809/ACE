@@ -10,7 +10,7 @@ import {
 } from "@/lib/machineOptions";
 
 const DEFAULT_IMAGE = "/excavator.webp";
-const API_URL = "http://localhost:5001/api/machines";
+const API_URL = "https://ace-bs8t.onrender.com/api/machines";
 
 export default function RegisterForm() {
   const [form, setForm] = useState({
