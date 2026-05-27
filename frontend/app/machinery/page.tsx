@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import MachineCard from "@/components/machinery/machineCard";
 import type { Machine } from "@/types/machine";
 
-const API_URL = "http://localhost:5001/api/machines";
+const API_URL = "https://ace-bs8t.onrender.com/api/machines";
 
 export default function MachineryPage() {
   const [machines, setMachines] = useState<Machine[]>([]);
