@@ -18,7 +18,7 @@ export default function RegisterForm() {
     company: "",
     model: "",
     location: "",
-    pricePerDay: "",
+    pricePerMonth: "",
     modelYear: "",
     hoursUsed: "",
     ownerName: "",
@@ -55,7 +55,7 @@ export default function RegisterForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
-          pricePerDay: Number(form.pricePerDay),
+          pricePerMonth: Number(form.pricePerMonth),
           modelYear: Number(form.modelYear),
           hoursUsed: Number(form.hoursUsed),
           image: DEFAULT_IMAGE,
@@ -97,7 +97,7 @@ export default function RegisterForm() {
             setSubmitted(false);
             setForm({
               category: "", company: "", model: "", location: "",
-              pricePerDay: "", modelYear: "", hoursUsed: "", ownerName: "",
+              pricePerMonth: "", modelYear: "", hoursUsed: "", ownerName: "",
               ownerContact: "", description: "", availability: "yes", availableFrom: "",
             });
             setPreview(null);
@@ -198,9 +198,9 @@ export default function RegisterForm() {
           </select>
         </Field>
 
-        <Field label="Rate per day (₹)">
+        <Field label="Rate per month (₹)">
           <input type="number" required min={0} placeholder="e.g. 15000"
-            value={form.pricePerDay} onChange={(e) => update("pricePerDay", e.target.value)} className={inputClass} />
+            value={form.pricePerMonth} onChange={(e) => update("pricePerMonth", e.target.value)} className={inputClass} />
         </Field>
       </div>
 
@@ -270,11 +270,11 @@ export default function RegisterForm() {
       <div className="grid gap-6 sm:grid-cols-2">
         <Field label="Owner / dealer name">
           <input type="text" required placeholder="e.g. XYZ Construction"
-            value={form.ownerName} onChange={(e) => update("ownerName", e.target.value)} className={inputClass} />
+            value={form.ownerName} onChange={(e) => update("ownerName", e.target.value.replace(/[0-9]/g, ""))} className={inputClass} />
         </Field>
         <Field label="Contact number">
-          <input type="tel" required placeholder="+91 98765 43210"
-            value={form.ownerContact} onChange={(e) => update("ownerContact", e.target.value)} className={inputClass} />
+          <input type="tel" required maxLength={10} inputMode="numeric" placeholder="+91 98765 43210"
+            value={form.ownerContact} onChange={(e) => update("ownerContact", e.target.value.slice(0, 10))} className={inputClass} />
         </Field>
       </div>
 
