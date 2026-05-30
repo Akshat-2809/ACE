@@ -21,11 +21,11 @@ router.post("/", async (req, res) => {
       model,
       image,
       location,
-      pricePerDay,
+      pricePerMonth,
       modelYear,
       hoursUsed,
       availability,
-      availableFrom,   // date string from frontend, e.g. "2026-06-15"
+      availableFrom,
       ownerName,
       ownerContact,
       description,
@@ -37,12 +37,14 @@ router.post("/", async (req, res) => {
       model,
       image,
       location,
-      pricePerDay: Number(pricePerDay),
+      pricePerMonth: Number(pricePerMonth),
       modelYear: modelYear ? Number(modelYear) : undefined,
       hoursUsed: hoursUsed ? Number(hoursUsed) : undefined,
       availability: availability === "no" ? "no" : "yes",
-      // Only store availableFrom when machine is NOT currently available
-      availableFrom: availability === "no" && availableFrom ? new Date(availableFrom) : null,
+      availableFrom:
+        availability === "no" && availableFrom
+          ? new Date(availableFrom)
+          : null,
       ownerName,
       ownerContact,
       description,

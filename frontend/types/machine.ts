@@ -8,14 +8,14 @@ export type MachineCategory =
 export type AvailabilityStatus = "yes" | "no";
 
 export interface Machine {
-  id?: string;         // optional — used by old mock data
-  _id?: string;        // optional — MongoDB's document id
+  id?: string;
+  _id?: string;
   category: MachineCategory;
   company: string;
   model: string;
   image: string;
   location: string;
-  pricePerDay: number;
+  pricePerMonth: number;
   modelYear?: number;
   hoursUsed?: number;
   availability: AvailabilityStatus;

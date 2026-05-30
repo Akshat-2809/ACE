@@ -4,13 +4,14 @@ import { useState } from "react";
 import Image from "next/image";
 import {
   categories,
-  companies,
-  modelsByCompany,
+  companiesByCategory,
+  modelsByCategoryAndCompany,
   locations,
 } from "@/lib/machineOptions";
 
 const DEFAULT_IMAGE = "/excavator.webp";
 const API_URL = "https://ace-bs8t.onrender.com/api/machines";
+// const API_URL = "http://localhost:5001/api/machines";
 
 export default function RegisterForm() {
   const [form, setForm] = useState({
@@ -24,8 +25,8 @@ export default function RegisterForm() {
     ownerName: "",
     ownerContact: "",
     description: "",
-    availability: "yes",         // "yes" | "no"
-    availableFrom: "",            // date string, only used when availability === "no"
+    availability: "yes",
+    availableFrom: "",
   });
 
   const [preview, setPreview] = useState<string | null>(null);
@@ -33,7 +34,14 @@ export default function RegisterForm() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
 
-  const availableModels = form.company ? modelsByCompany[form.company] ?? [] : [];
+  const availableCompanies = form.category
+    ? companiesByCategory[form.category] ?? []
+    : [];
+
+  const availableModels =
+    form.category && form.company
+      ? modelsByCategoryAndCompany[form.category]?.[form.company] ?? []
+      : [];
 
   function update(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -110,7 +118,6 @@ export default function RegisterForm() {
     );
   }
 
-  // Today's date in YYYY-MM-DD for min date on the picker
   const todayStr = new Date().toISOString().split("T")[0];
 
   return (
@@ -120,7 +127,7 @@ export default function RegisterForm() {
         <label className="mb-2 block text-sm font-semibold text-ink">Machine photo</label>
         <div className="flex items-center gap-5">
           <div className="relative h-28 w-36 shrink-0 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
-            <Image src={preview ?? DEFAULT_IMAGE} alt="Machine preview" fill className="object-cover" />
+            <Image src={preview ?? DEFAULT_IMAGE} alt="Machine preview" fill className="object-cover" sizes="144px" />
             {!preview && (
               <span className="absolute inset-x-0 bottom-0 bg-black/50 py-1 text-center text-[10px] font-medium text-white">
                 Default image
@@ -143,9 +150,20 @@ export default function RegisterForm() {
       {/* Category + Company */}
       <div className="grid gap-6 sm:grid-cols-2">
         <Field label="Machine type">
-          <select required value={form.category} onChange={(e) => update("category", e.target.value)} className={selectClass}>
+          <select
+            required
+            value={form.category}
+            onChange={(e) => {
+              update("category", e.target.value);
+              update("company", "");
+              update("model", "");
+            }}
+            className={selectClass}
+          >
             <option value="" disabled>Select type</option>
-            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+            {categories.map((c: string) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
           </select>
         </Field>
 
@@ -153,14 +171,19 @@ export default function RegisterForm() {
           <select
             required
             value={form.company}
+            disabled={!form.category}
             onChange={(e) => {
               update("company", e.target.value);
               update("model", "");
             }}
-            className={selectClass}
+            className={`${selectClass} disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400`}
           >
-            <option value="" disabled>Select company</option>
-            {companies.map((c) => <option key={c} value={c}>{c}</option>)}
+            <option value="" disabled>
+              {form.category ? "Select company" : "Select a type first"}
+            </option>
+            {availableCompanies.map((c: string) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
           </select>
         </Field>
       </div>
@@ -175,40 +198,62 @@ export default function RegisterForm() {
             disabled={!form.company}
             className={`${selectClass} disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400`}
           >
-            <option value="" disabled>{form.company ? "Select model" : "Select a company first"}</option>
-            {availableModels.map((m) => <option key={m} value={m}>{m}</option>)}
+            <option value="" disabled>
+              {form.company ? "Select model" : "Select a company first"}
+            </option>
+            {availableModels.map((m: string) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
           </select>
         </Field>
 
         <Field label="Model year">
-          <input type="number" required min={1990} max={2026} placeholder="e.g. 2022"
-            value={form.modelYear} onChange={(e) => update("modelYear", e.target.value)} className={inputClass} />
+          <input
+            type="number" required min={1990} max={2026} placeholder="e.g. 2022"
+            value={form.modelYear}
+            onChange={(e) => update("modelYear", e.target.value)}
+            className={inputClass}
+          />
         </Field>
       </div>
 
       {/* Location + Price */}
       <div className="grid gap-6 sm:grid-cols-2">
         <Field label="Location">
-          <select required value={form.location} onChange={(e) => update("location", e.target.value)} className={selectClass}>
+          <select
+            required
+            value={form.location}
+            onChange={(e) => update("location", e.target.value)}
+            className={selectClass}
+          >
             <option value="" disabled>Select location</option>
-            {/* ↓ Gwalior added here in addition to whatever is in machineOptions */}
             {[...locations, ...(!locations.includes("Gwalior") ? ["Gwalior"] : [])]
               .sort()
-              .map((l) => <option key={l} value={l}>{l}</option>)}
+              .map((l: string) => (
+                <option key={l} value={l}>{l}</option>
+              ))}
           </select>
         </Field>
 
         <Field label="Rate per month (₹)">
-          <input type="number" required min={0} placeholder="e.g. 15000"
-            value={form.pricePerMonth} onChange={(e) => update("pricePerMonth", e.target.value)} className={inputClass} />
+          <input
+            type="number" required min={0} placeholder="e.g. 15000"
+            value={form.pricePerMonth}
+            onChange={(e) => update("pricePerMonth", e.target.value)}
+            className={inputClass}
+          />
         </Field>
       </div>
 
-      {/* Hours used + Availability toggles — always side by side */}
+      {/* Hours used + Availability */}
       <div className="grid gap-6 sm:grid-cols-2">
         <Field label="Hours used">
-          <input type="number" required min={0} placeholder="e.g. 3400"
-            value={form.hoursUsed} onChange={(e) => update("hoursUsed", e.target.value)} className={inputClass} />
+          <input
+            type="number" required min={0} placeholder="e.g. 3400"
+            value={form.hoursUsed}
+            onChange={(e) => update("hoursUsed", e.target.value)}
+            className={inputClass}
+          />
         </Field>
 
         <div>
@@ -237,16 +282,14 @@ export default function RegisterForm() {
         </div>
       </div>
 
-      {/* Date picker — full-width centered row, shown only when "No" */}
+      {/* Date picker — only shown when "No" */}
       {form.availability === "no" && (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 px-6 py-5">
           <label className="text-sm font-semibold text-ink">
             From which date will the machine be available?
           </label>
           <input
-            type="date"
-            required
-            min={todayStr}
+            type="date" required min={todayStr}
             value={form.availableFrom}
             onChange={(e) => update("availableFrom", e.target.value)}
             className={`${inputClass} max-w-xs text-center`}
@@ -256,9 +299,7 @@ export default function RegisterForm() {
               Available from{" "}
               <span className="font-semibold text-ink">
                 {new Date(form.availableFrom).toLocaleDateString("en-IN", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
+                  day: "numeric", month: "long", year: "numeric",
                 })}
               </span>
             </p>
@@ -269,22 +310,34 @@ export default function RegisterForm() {
       {/* Owner details */}
       <div className="grid gap-6 sm:grid-cols-2">
         <Field label="Owner / dealer name">
-          <input type="text" required placeholder="e.g. XYZ Construction"
-            value={form.ownerName} onChange={(e) => update("ownerName", e.target.value.replace(/[0-9]/g, ""))} className={inputClass} />
+          <input
+            type="text" required placeholder="e.g. XYZ Construction"
+            value={form.ownerName}
+            onChange={(e) => update("ownerName", e.target.value.replace(/[0-9]/g, ""))}
+            className={inputClass}
+          />
         </Field>
         <Field label="Contact number">
-          <input type="tel" required maxLength={10} inputMode="numeric" placeholder="+91 98765 43210"
-            value={form.ownerContact} onChange={(e) => update("ownerContact", e.target.value.slice(0, 10))} className={inputClass} />
+          <input
+            type="tel" required maxLength={10} inputMode="numeric" placeholder="+91 98765 43210"
+            value={form.ownerContact}
+            onChange={(e) => update("ownerContact", e.target.value.slice(0, 10))}
+            className={inputClass}
+          />
         </Field>
       </div>
 
       {/* Description */}
       <Field label="Description">
-        <textarea rows={4} placeholder="Add details — capacity, condition, operator availability, etc."
-          value={form.description} onChange={(e) => update("description", e.target.value)} className={`${inputClass} resize-none`} />
+        <textarea
+          rows={4} placeholder="Add details — capacity, condition, operator availability, etc."
+          value={form.description}
+          onChange={(e) => update("description", e.target.value)}
+          className={`${inputClass} resize-none`}
+        />
       </Field>
 
-      {/* Error message */}
+      {/* Error */}
       {error && (
         <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>
       )}

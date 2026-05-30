@@ -7,7 +7,6 @@ import { Machine } from "@/types/machine";
 export default function MachineCard({ machine }: { machine: Machine }) {
   const [expanded, setExpanded] = useState(false);
   const isAvailable = machine.availability === "yes";
-
   const displayName = `${machine.company} ${machine.model}`;
 
   const availableFromFormatted = machine.availableFrom
@@ -20,7 +19,6 @@ export default function MachineCard({ machine }: { machine: Machine }) {
 
   return (
     <div className="group overflow-hidden rounded-2xl border border-neutral-200 bg-white transition-all duration-300 hover:shadow-lg">
-      {/* Image */}
       <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
         <Image
           src={machine.image}
@@ -29,12 +27,9 @@ export default function MachineCard({ machine }: { machine: Machine }) {
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           className="object-cover transition-transform duration-500 group-hover:scale-105"
         />
-        {/* Status badge */}
         <span
           className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-semibold shadow-sm ${
-            isAvailable
-              ? "bg-green-500 text-white"
-              : "bg-neutral-800 text-white"
+            isAvailable ? "bg-green-500 text-white" : "bg-neutral-800 text-white"
           }`}
         >
           {isAvailable
@@ -43,13 +38,11 @@ export default function MachineCard({ machine }: { machine: Machine }) {
             ? `Free from ${availableFromFormatted}`
             : "Busy"}
         </span>
-        {/* Category tag */}
         <span className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-ink backdrop-blur-sm">
           {machine.category}
         </span>
       </div>
 
-      {/* Body */}
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -64,13 +57,12 @@ export default function MachineCard({ machine }: { machine: Machine }) {
           </div>
           <div className="text-right">
             <p className="text-xl font-bold text-ink">
-              ₹{machine.pricePerDay.toLocaleString("en-IN")}
+              ₹{(machine.pricePerMonth ?? 0).toLocaleString("en-IN")}
             </p>
-            <p className="text-xs text-neutral-400">per day</p>
+            <p className="text-xs text-neutral-400">per month</p>
           </div>
         </div>
 
-        {/* Expandable details */}
         <div
           className={`grid overflow-hidden transition-all duration-300 ${
             expanded ? "mt-4 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
@@ -90,7 +82,6 @@ export default function MachineCard({ machine }: { machine: Machine }) {
                   {machine.description}
                 </p>
               )}
-
               {isAvailable && (
                 <a
                   href={`tel:${machine.ownerContact.replace(/\s/g, "")}`}
@@ -106,7 +97,6 @@ export default function MachineCard({ machine }: { machine: Machine }) {
           </div>
         </div>
 
-        {/* Show more / less toggle */}
         <button
           onClick={() => setExpanded(!expanded)}
           className="mt-4 flex w-full items-center justify-center gap-1 text-sm font-semibold text-neutral-600 transition-colors hover:text-ink"

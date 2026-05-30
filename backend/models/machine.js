@@ -23,7 +23,7 @@ const machineSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    pricePerDay: {
+    pricePerMonth: {
       type: Number,
       required: true,
     },
@@ -33,21 +33,15 @@ const machineSchema = new mongoose.Schema(
     hoursUsed: {
       type: Number,
     },
-
-    // ── Availability ──────────────────────────────────────────
-    // "yes"  → machine is available right now
-    // "no"   → machine is currently busy; availableFrom holds the date
     availability: {
       type: String,
       enum: ["yes", "no"],
       default: "yes",
     },
     availableFrom: {
-      type: Date,   // null when availability === "yes"
+      type: Date,
       default: null,
     },
-    // ─────────────────────────────────────────────────────────
-
     ownerName: {
       type: String,
       required: true,
