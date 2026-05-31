@@ -4,18 +4,29 @@ import { useState } from "react";
 import Image from "next/image";
 import {
   categories,
+  craneTypes,
   companiesByCategory,
+  companiesByCraneType,
   modelsByCategoryAndCompany,
+  craneModelsByTypeAndCompany,
   locations,
 } from "@/lib/machineOptions";
 
-const DEFAULT_IMAGE = "/excavator.webp";
-const API_URL = "https://ace-bs8t.onrender.com/api/machines";
-// const API_URL = "http://localhost:5001/api/machines";
+const categoryImageMap: { [key: string]: string } = {
+  "Excavator": "/excavator.webp",
+  "Concrete Pump": "/concrete.webp",
+  "Fiori": "/fiori.webp",
+  "JCB": "/jcb.webp",
+  "Crane": "/crane.webp",
+};
+
+const API_URL = "http://localhost:5001/api/machines";
+// const API_URL = "https://ace-bs8t.onrender.com/api/machines";
 
 export default function RegisterForm() {
   const [form, setForm] = useState({
     category: "",
+    craneType: "",
     company: "",
     model: "",
     location: "",
@@ -34,14 +45,24 @@ export default function RegisterForm() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
 
-  const availableCompanies = form.category
+  const isCrane = form.category === "Crane";
+  const defaultImage = categoryImageMap[form.category] ?? "/excavator.webp";
+
+  const availableCompanies = isCrane
+    ? form.craneType
+      ? companiesByCraneType[form.craneType] ?? []
+      : []
+    : form.category
     ? companiesByCategory[form.category] ?? []
     : [];
 
-  const availableModels =
-    form.category && form.company
-      ? modelsByCategoryAndCompany[form.category]?.[form.company] ?? []
-      : [];
+  const availableModels = isCrane
+    ? form.craneType && form.company
+      ? craneModelsByTypeAndCompany[form.craneType]?.[form.company] ?? []
+      : []
+    : form.category && form.company
+    ? modelsByCategoryAndCompany[form.category]?.[form.company] ?? []
+    : [];
 
   function update(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -63,10 +84,11 @@ export default function RegisterForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          craneType: isCrane ? form.craneType : null,
           pricePerMonth: Number(form.pricePerMonth),
           modelYear: Number(form.modelYear),
           hoursUsed: Number(form.hoursUsed),
-          image: DEFAULT_IMAGE,
+          image: defaultImage,
           availableFrom:
             form.availability === "no" ? form.availableFrom : null,
         }),
@@ -94,17 +116,13 @@ export default function RegisterForm() {
             <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
           </svg>
         </div>
-        <h3 className="mt-5 text-xl font-semibold text-ink">
-          Machine listed successfully!
-        </h3>
-        <p className="mt-2 text-neutral-600">
-          Your machine is now saved and visible to contractors.
-        </p>
+        <h3 className="mt-5 text-xl font-semibold text-ink">Machine listed successfully!</h3>
+        <p className="mt-2 text-neutral-600">Your machine is now saved and visible to contractors.</p>
         <button
           onClick={() => {
             setSubmitted(false);
             setForm({
-              category: "", company: "", model: "", location: "",
+              category: "", craneType: "", company: "", model: "", location: "",
               pricePerMonth: "", modelYear: "", hoursUsed: "", ownerName: "",
               ownerContact: "", description: "", availability: "yes", availableFrom: "",
             });
@@ -127,10 +145,16 @@ export default function RegisterForm() {
         <label className="mb-2 block text-sm font-semibold text-ink">Machine photo</label>
         <div className="flex items-center gap-5">
           <div className="relative h-28 w-36 shrink-0 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
-            <Image src={preview ?? DEFAULT_IMAGE} alt="Machine preview" fill className="object-cover" sizes="144px" />
+            <Image
+              src={preview ?? defaultImage}
+              alt="Machine preview"
+              fill
+              className="object-cover"
+              sizes="144px"
+            />
             {!preview && (
               <span className="absolute inset-x-0 bottom-0 bg-black/50 py-1 text-center text-[10px] font-medium text-white">
-                Default image
+                {form.category ? `${form.category} (default)` : "Default image"}
               </span>
             )}
           </div>
@@ -147,7 +171,7 @@ export default function RegisterForm() {
         </div>
       </div>
 
-      {/* Category + Company */}
+      {/* Category + (Crane type OR Company) */}
       <div className="grid gap-6 sm:grid-cols-2">
         <Field label="Machine type">
           <select
@@ -155,6 +179,7 @@ export default function RegisterForm() {
             value={form.category}
             onChange={(e) => {
               update("category", e.target.value);
+              update("craneType", "");
               update("company", "");
               update("model", "");
             }}
@@ -167,11 +192,54 @@ export default function RegisterForm() {
           </select>
         </Field>
 
+        {isCrane ? (
+          <Field label="Crane type">
+            <select
+              required
+              value={form.craneType}
+              onChange={(e) => {
+                update("craneType", e.target.value);
+                update("company", "");
+                update("model", "");
+              }}
+              className={selectClass}
+            >
+              <option value="" disabled>Select crane type</option>
+              {craneTypes.map((t: string) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </Field>
+        ) : (
+          <Field label="Company / brand">
+            <select
+              required
+              value={form.company}
+              disabled={!form.category}
+              onChange={(e) => {
+                update("company", e.target.value);
+                update("model", "");
+              }}
+              className={`${selectClass} disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400`}
+            >
+              <option value="" disabled>
+                {form.category ? "Select company" : "Select a type first"}
+              </option>
+              {availableCompanies.map((c: string) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </Field>
+        )}
+      </div>
+
+      {/* Company — only shown for crane after crane type is picked */}
+      {isCrane && (
         <Field label="Company / brand">
           <select
             required
             value={form.company}
-            disabled={!form.category}
+            disabled={!form.craneType}
             onChange={(e) => {
               update("company", e.target.value);
               update("model", "");
@@ -179,14 +247,14 @@ export default function RegisterForm() {
             className={`${selectClass} disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400`}
           >
             <option value="" disabled>
-              {form.category ? "Select company" : "Select a type first"}
+              {form.craneType ? "Select company" : "Select a crane type first"}
             </option>
             {availableCompanies.map((c: string) => (
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
         </Field>
-      </div>
+      )}
 
       {/* Model + Model year */}
       <div className="grid gap-6 sm:grid-cols-2">
@@ -209,9 +277,9 @@ export default function RegisterForm() {
 
         <Field label="Model year">
           <input
-            type="number" required min={1990} max={2026} placeholder="e.g. 2022"
+            type="number" required min={1990} max={2026} maxLength={4} placeholder="e.g. 2022"
             value={form.modelYear}
-            onChange={(e) => update("modelYear", e.target.value)}
+            onChange={(e) => update("modelYear", e.target.value.slice(0, 4))}
             className={inputClass}
           />
         </Field>
@@ -257,9 +325,7 @@ export default function RegisterForm() {
         </Field>
 
         <div>
-          <label className="mb-3 block text-sm font-semibold text-ink">
-            Currently available?
-          </label>
+          <label className="mb-3 block text-sm font-semibold text-ink">Currently available?</label>
           <div className="flex gap-3">
             {(["yes", "no"] as const).map((val) => (
               <button
@@ -282,7 +348,6 @@ export default function RegisterForm() {
         </div>
       </div>
 
-      {/* Date picker — only shown when "No" */}
       {form.availability === "no" && (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 px-6 py-5">
           <label className="text-sm font-semibold text-ink">
@@ -307,7 +372,6 @@ export default function RegisterForm() {
         </div>
       )}
 
-      {/* Owner details */}
       <div className="grid gap-6 sm:grid-cols-2">
         <Field label="Owner / dealer name">
           <input
@@ -327,22 +391,19 @@ export default function RegisterForm() {
         </Field>
       </div>
 
-      {/* Description */}
       <Field label="Description">
         <textarea
-          rows={4} placeholder="Add details — capacity, condition, operator availability, etc."
+          rows={2} placeholder="Add details — capacity, condition, operator availability, etc."
           value={form.description}
           onChange={(e) => update("description", e.target.value)}
           className={`${inputClass} resize-none`}
         />
       </Field>
 
-      {/* Error */}
       {error && (
         <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>
       )}
 
-      {/* Submit */}
       <button
         type="submit"
         disabled={submitting}

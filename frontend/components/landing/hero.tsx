@@ -7,7 +7,7 @@ import Link from "next/link";
 const slides = [
   { src: "/excavator.webp", alt: "Excavator", label: "Excavator", rate: "₹18,500/day" },
   { src: "/concrete.webp", alt: "Concrete pump", label: "Concrete Pump", rate: "₹14,000/day" },
-  { src: "/fiori600.webp", alt: "Fiori self-loading mixer", label: "Fiori 600", rate: "₹12,000/day" },
+  { src: "/fiori.webp", alt: "Fiori self-loading mixer", label: "Fiori 600", rate: "₹12,000/day" },
   { src: "/jcb.webp", alt: "JCB backhoe loader", label: "JCB Backhoe", rate: "₹9,500/day" },
 ];
 

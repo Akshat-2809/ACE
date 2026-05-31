@@ -46,7 +46,7 @@ export default function MachineryPage() {
           Available machines
         </h1>
         <p className="mt-3 text-lg text-neutral-600">
-          Find and contact machine owners near you · Indore region
+          Find and contact machine owners near you
         </p>
       </div>
 
@@ -118,4 +118,4 @@ export default function MachineryPage() {
       )}
     </div>
   );
-}
+} 

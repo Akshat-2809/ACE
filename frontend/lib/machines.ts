@@ -38,7 +38,7 @@ export const machines: Machine[] = [
     category: "Fiori",
     company: "Fiori",
     model: "DB 460",
-    image: "/fiori600.webp",
+    image: "/fiori.webp",
     location: "Dewas",
     pricePerMonth: 12000,
     availability: "no",

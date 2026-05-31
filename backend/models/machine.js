@@ -7,6 +7,11 @@ const machineSchema = new mongoose.Schema(
       required: true,
       enum: ["Excavator", "Concrete Pump", "Fiori", "JCB", "Crane"],
     },
+    craneType: {
+      type: String,
+      enum: ["Hydra", "Mobile Crane", "Rough Terrain Crane", "Tower Crane", null],
+      default: null,
+    },
     company: {
       type: String,
       required: true,

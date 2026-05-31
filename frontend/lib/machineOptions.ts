@@ -1,4 +1,4 @@
-import { MachineCategory } from "@/types/machine";
+import { MachineCategory, CraneType } from "@/types/machine";
 
 export const categories: MachineCategory[] = [
   "Excavator",
@@ -8,23 +8,35 @@ export const categories: MachineCategory[] = [
   "Crane",
 ];
 
+export const craneTypes: CraneType[] = [
+  "Hydra",
+  "Mobile Crane",
+  "Rough Terrain Crane",
+  "Tower Crane",
+];
+
+// Companies for normal (non-crane) categories
 export const companiesByCategory: { [key: string]: string[] } = {
   Excavator: ["JCB", "CAT", "Tata Hitachi", "Komatsu", "Volvo", "SANY", "Hyundai"],
-  "Concrete Pump": ["Schwing Stetter", "Putzmeister", "SANY", "Zoomlion"],
+  "Concrete Pump": [
+    "Schwing Stetter",
+    "SANY India",
+    "Putzmeister India",
+    "Aquarius Engineering",
+    "Ajax Engineering",
+  ],
   Fiori: ["Fiori"],
   JCB: ["JCB"],
-  Crane: ["ACE", "KATO", "Liebherr", "Tadano"],
 };
 
+// Models for normal categories (category → company → models)
 export const modelsByCategoryAndCompany: { [key: string]: { [key: string]: string[] } } = {
   Excavator: {
     JCB: [
       "520X", "JCB 8I", "JCB 130", "NXT 140", "NXT 145 Quarry Master",
       "NXT 150", "NXT 205", "NXT 210", "NXT 225 LCM", "345 LC", "385 LC",
     ],
-    CAT: [
-      "CAT 316GC", "CAT 321", "CAT 322", "CAT 324", "CAT 330GC", "CAT 350",
-    ],
+    CAT: ["CAT 316GC", "CAT 321", "CAT 322", "CAT 324", "CAT 330GC", "CAT 350"],
     "Tata Hitachi": [
       "EX130 Prime", "ZAXIS 140H", "EX200 Infra", "EX200LC Prime",
       "EX210", "EX215 LCQ", "ZAXIS 220LC", "EX350", "ZAXIS 370 LCH",
@@ -41,29 +53,68 @@ export const modelsByCategoryAndCompany: { [key: string]: { [key: string]: strin
     ],
   },
   "Concrete Pump": {
-    "Schwing Stetter": ["S 28 X", "S 36 X", "S 43 SX", "S 52 SX", "S 61 SX"],
-    Putzmeister: ["BSF 28.09H", "BSF 36.09H", "BSF 42.09H", "BSF 52.09H"],
-    SANY: ["SY5120THB-28", "SY5196THB-37", "SY5280THB-48"],
-    Zoomlion: ["ZLJ5160THBB-20X", "ZLJ5270THB-37X"],
+    "Schwing Stetter": [
+      "BP 350", "SP 1000", "SP 1200", "SP 1300", "SP 1400",
+      "SP 3500", "SP 4507", "SP 4800", "SP 8800",
+    ],
+    "SANY India": [
+      "HGR21 III", "HGR28 III", "HGR 33 IV", "HGR 36 IV",
+      "HGT45", "HGT51", "HGY18 III",
+    ],
+    "Putzmeister India": [
+      "BSA 1404", "BSA 1405D", "BSA 1406-E", "BSA 1407-D",
+      "BSA 1407-D Ultimata", "BSA 1407 HD", "BSA 1408",
+      "BSA 1410", "BSA 2109 HD",
+    ],
+    "Aquarius Engineering": ["703D", "704D", "1405D", "1405D Prime", "1407D"],
+    "Ajax Engineering": ["ASP 3009", "ASP 4011", "ASP 5009", "ARGO 7011", "ASP 10012"],
   },
   Fiori: {
-    Fiori: [
-      "DB 260S", "DB 350S", "DB 460S", "DB 600S", "DB 800S", "DBX 35", "DBX 50",
-    ],
+    Fiori: ["DB 260S", "DB 350S", "DB 460S", "DB 600S", "DB 800S", "DBX 35", "DBX 50"],
   },
   JCB: {
     JCB: ["JCB 3DX", "JCB 3DX Super", "JCB 4DX", "JCB 3CX", "JCB 4CX"],
   },
-  Crane: {
-    ACE: ["ACE 14XW", "ACE 16XW", "ACE 20XW", "ACE 30XW", "ACE 55XW"],
-    KATO: ["KATO SR-250", "KATO SR-300", "KATO SR-500"],
-    Liebherr: ["LTM 1030", "LTM 1050", "LTM 1100", "LTM 1200"],
-    Tadano: ["GR-300EX", "GR-500EX", "GR-800EX"],
+};
+
+// Companies for each crane sub-type
+export const companiesByCraneType: { [key: string]: string[] } = {
+  Hydra: ["ACE", "Escorts Kubota", "Indo Farm", "Tata Hitachi"],
+  "Mobile Crane": ["ACE", "Escorts Kubota", "Tata Hitachi"],
+  "Rough Terrain Crane": ["Escorts Kubota", "Tractors India"],
+  "Tower Crane": ["Indo Farm"],
+};
+
+// Models for crane sub-types (craneType → company → models)
+export const craneModelsByTypeAndCompany: { [key: string]: { [key: string]: string[] } } = {
+  Hydra: {
+    ACE: ["12XW", "14XW", "15XW", "15XWE", "16XW", "18XW", "20XW", "25XW"],
+    "Escorts Kubota": ["Hydra 12", "Hydra 14", "Hydra 15"],
+    "Indo Farm": [
+      "15FN", "15FNV", "15FNT", "23FN",
+      "15FNX", "17 FNX", "30 FNX",
+    ],
+    "Tata Hitachi": ["TFC 75", "TFC 280"],
+  },
+  "Mobile Crane": {
+    ACE: ["Rhino 90C", "Rhino 110C", "HXP 150"],
+    "Escorts Kubota": ["F-15", "F-15 Fighter", "F-17"],
+    "Tata Hitachi": ["KH500"],
+  },
+  "Rough Terrain Crane": {
+    "Escorts Kubota": ["RT20", "RT30", "RT40"],
+    "Tractors India": ["Husky 620", "RT 630C", "RT 740B", "RT 760", "RT 880"],
+  },
+  "Tower Crane": {
+    "Indo Farm": ["16T", "20T", "25T", "25T Mining Master"],
   },
 };
 
 export const companies = [
-  ...new Set(Object.values(companiesByCategory).flat()),
+  ...new Set([
+    ...Object.values(companiesByCategory).flat(),
+    ...Object.values(companiesByCraneType).flat(),
+  ]),
 ];
 
 export const locations = [

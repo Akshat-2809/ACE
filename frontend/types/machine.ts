@@ -5,12 +5,19 @@ export type MachineCategory =
   | "JCB"
   | "Crane";
 
+export type CraneType =
+  | "Hydra"
+  | "Mobile Crane"
+  | "Rough Terrain Crane"
+  | "Tower Crane";
+
 export type AvailabilityStatus = "yes" | "no";
 
 export interface Machine {
   id?: string;
   _id?: string;
   category: MachineCategory;
+  craneType?: CraneType;
   company: string;
   model: string;
   image: string;
