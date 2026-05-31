@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Machine = require("../models/machine");
 
-// GET /api/machines  →  fetch all machines (newest first)
+// GET /api/machines
 router.get("/", async (req, res) => {
   try {
     const machines = await Machine.find().sort({ createdAt: -1 });
@@ -12,7 +12,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// POST /api/machines  →  create a new machine listing
+// POST /api/machines
 router.post("/", async (req, res) => {
   try {
     const {
@@ -29,9 +29,10 @@ router.post("/", async (req, res) => {
       modelYear: modelYear ? Number(modelYear) : undefined,
       hoursUsed: hoursUsed ? Number(hoursUsed) : undefined,
       availability: availability === "no" ? "no" : "yes",
-      availableFrom:
-        availability === "no" && availableFrom ? new Date(availableFrom) : null,
+      availableFrom: availability === "no" && availableFrom ? new Date(availableFrom) : null,
       ownerName, ownerContact, description,
+      editCount: 0,
+      contactVerified: false,
     };
 
     const newMachine = new Machine(machineData);
@@ -42,9 +43,16 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PUT /api/machines/:id  →  update an existing machine listing
+// PUT /api/machines/:id — update listing (max 1 edit)
 router.put("/:id", async (req, res) => {
   try {
+    const machine = await Machine.findById(req.params.id);
+    if (!machine) return res.status(404).json({ message: "Machine not found" });
+
+    if (machine.editCount >= 1) {
+      return res.status(403).json({ message: "This listing has already been edited once. No further edits are allowed." });
+    }
+
     const {
       pricePerMonth, location, ownerName, ownerContact,
       description, availability, availableFrom, modelYear, hoursUsed,
@@ -52,15 +60,12 @@ router.put("/:id", async (req, res) => {
 
     const updates = {
       pricePerMonth: Number(pricePerMonth),
-      location,
-      ownerName,
-      ownerContact,
-      description,
+      location, ownerName, ownerContact, description,
       availability: availability === "no" ? "no" : "yes",
-      availableFrom:
-        availability === "no" && availableFrom ? new Date(availableFrom) : null,
+      availableFrom: availability === "no" && availableFrom ? new Date(availableFrom) : null,
       ...(modelYear !== undefined && { modelYear: Number(modelYear) }),
       ...(hoursUsed !== undefined && { hoursUsed: Number(hoursUsed) }),
+      $inc: { editCount: 1 },
     };
 
     const updated = await Machine.findByIdAndUpdate(
@@ -69,10 +74,24 @@ router.put("/:id", async (req, res) => {
       { returnDocument: "after", runValidators: true }
     );
 
-    if (!updated) return res.status(404).json({ message: "Machine not found" });
     res.json(updated);
   } catch (error) {
     res.status(400).json({ message: "Failed to update machine", error: error.message });
+  }
+});
+
+// PATCH /api/machines/:id/verify — mark contact as verified
+router.patch("/:id/verify", async (req, res) => {
+  try {
+    const machine = await Machine.findByIdAndUpdate(
+      req.params.id,
+      { contactVerified: true },
+      { returnDocument: "after" }
+    );
+    if (!machine) return res.status(404).json({ message: "Machine not found" });
+    res.json({ success: true, contactVerified: true });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to verify contact", error: error.message });
   }
 });
 
