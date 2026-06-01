@@ -1,8 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Image from "next/image";
 import { Machine } from "@/types/machine";
+import { auth } from "@/lib/firebases";
+import {
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  ConfirmationResult,
+} from "firebase/auth";
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL}/api/machines`;
 
@@ -11,6 +17,18 @@ export default function MachineCard({ machine }: { machine: Machine }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
+  const [verifiedNow, setVerifiedNow] = useState(false);
+
+  const confirmationRef = useRef<ConfirmationResult | null>(null);
+  const recaptchaRef = useRef<RecaptchaVerifier | null>(null);
+
   const [form, setForm] = useState({
     pricePerMonth: String(machine.pricePerMonth ?? ""),
     location: machine.location ?? "",
@@ -26,7 +44,8 @@ export default function MachineCard({ machine }: { machine: Machine }) {
   });
 
   const isAvailable = machine.availability === "yes";
-  const canEdit = (machine.editCount ?? 0) < 1;
+  const isVerified = machine.contactVerified || verifiedNow;
+  const canEdit = isVerified || (machine.editCount ?? 0) < 1;
   const displayName = `${machine.company} ${machine.model}`;
   const todayStr = new Date().toISOString().split("T")[0];
 
@@ -68,11 +87,62 @@ export default function MachineCard({ machine }: { machine: Machine }) {
     }
   }
 
+  async function sendOtp() {
+    setSendingOtp(true);
+    setVerifyError("");
+    try {
+      if (recaptchaRef.current) {
+        recaptchaRef.current.clear();
+        recaptchaRef.current = null;
+      }
+      const verifier = new RecaptchaVerifier(auth, `recaptcha-card-${machine._id}`, {
+        size: "invisible",
+      });
+      recaptchaRef.current = verifier;
+      const phoneNumber = `+91${machine.ownerContact.replace(/\D/g, "")}`;
+      const confirmation = await signInWithPhoneNumber(auth, phoneNumber, verifier);
+      confirmationRef.current = confirmation;
+      setOtpSent(true);
+    } catch (err) {
+      setVerifyError(err instanceof Error ? err.message : "Failed to send OTP");
+    } finally {
+      setSendingOtp(false);
+    }
+  }
+
+  async function confirmOtp() {
+    if (!confirmationRef.current) return;
+    setVerifying(true);
+    setVerifyError("");
+    try {
+      await confirmationRef.current.confirm(otp);
+      const id = machine._id ?? machine.id;
+      await fetch(`${API_URL}/${id}/verify`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+      });
+      setVerifiedNow(true);
+      setShowVerifyModal(false);
+      setOtpSent(false);
+      setOtp("");
+    } catch {
+      setVerifyError("Invalid OTP. Please try again.");
+    } finally {
+      setVerifying(false);
+    }
+  }
+
   return (
     <div className="group overflow-hidden rounded-2xl border border-neutral-200 bg-white transition-all duration-300 hover:shadow-lg">
       {/* Image */}
       <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
-        <Image src={machine.image} alt={displayName} fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
+        <Image
+          src={machine.image}
+          alt={displayName}
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          className="object-cover transition-transform duration-500 group-hover:scale-105"
+        />
         <span className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-semibold shadow-sm ${isAvailable ? "bg-green-500 text-white" : "bg-neutral-800 text-white"}`}>
           {isAvailable ? "Available" : availableFromFormatted ? `Free from ${availableFromFormatted}` : "Busy"}
         </span>
@@ -106,14 +176,12 @@ export default function MachineCard({ machine }: { machine: Machine }) {
             <div className="space-y-2.5 border-t border-neutral-100 pt-4 text-sm">
               <Detail label="Dealer" value={machine.ownerName} />
 
-              {/* Contact with blue tick if verified */}
               <div className="flex items-center justify-between">
                 <span className="text-neutral-400">Contact</span>
                 <span className="flex items-center gap-1.5 font-medium text-ink">
                   {machine.ownerContact}
-                  {machine.contactVerified && (
-                    <svg className="h-4 w-4 text-blue-500" fill="currentColor" viewBox="0 0 24 24" role="img" aria-label="Verified contact">
-                      <title>Verified contact</title>
+                  {isVerified && (
+                    <svg className="h-4 w-4 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
                       <path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12a4.49 4.49 0 0 1-1.549 3.397 4.491 4.491 0 0 1-1.307 3.497 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.491 4.491 0 0 1-3.497-1.307 4.491 4.491 0 0 1-1.307-3.497A4.49 4.49 0 0 1 2.25 12a4.49 4.49 0 0 1 1.549-3.397 4.491 4.491 0 0 1 1.307-3.497 4.491 4.491 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clipRule="evenodd" />
                     </svg>
                   )}
@@ -122,40 +190,67 @@ export default function MachineCard({ machine }: { machine: Machine }) {
 
               <Detail label="Model year" value={String(machine.modelYear ?? "—")} />
               <Detail label="Hours used" value={machine.hoursUsed != null ? `${machine.hoursUsed.toLocaleString("en-IN")} hrs` : "—"} />
-              {machine.description && <p className="pt-1 leading-relaxed text-neutral-500">{machine.description}</p>}
+              {machine.description && (
+                <p className="pt-1 leading-relaxed text-neutral-500">{machine.description}</p>
+              )}
 
-              {/* Call dealer */}
-              <a href={`tel:${machine.ownerContact.replace(/\s/g, "")}`} className="mt-2 flex items-center justify-center gap-2 rounded-full bg-hivis px-4 py-2.5 text-sm font-bold text-ink transition-colors hover:bg-hivis-dark">
+              <a
+                href={`tel:${machine.ownerContact.replace(/\s/g, "")}`}
+                className="mt-2 flex items-center justify-center gap-2 rounded-full bg-hivis px-4 py-2.5 text-sm font-bold text-ink transition-colors hover:bg-hivis-dark"
+              >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
                 </svg>
                 Call dealer
               </a>
 
-              {/* Edit button */}
-              {canEdit ? (
-                <button onClick={() => setEditing(true)} className="mt-1 flex w-full items-center justify-center gap-2 rounded-full border border-neutral-300 px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-neutral-50">
+              {canEdit && (
+                <button
+                  onClick={() => setEditing(true)}
+                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-full border border-neutral-300 px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-neutral-50"
+                >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
                   </svg>
                   Edit listing
                 </button>
-              ) : (
+              )}
+
+              {!canEdit && (
                 <p className="mt-1 flex items-center justify-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-xs text-neutral-400">
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
                   </svg>
-                  Listing locked — edit limit reached
+                  Listing locked — verify contact to edit again
                 </p>
               )}
+
+              {!isVerified && (
+                <button
+                  onClick={() => setShowVerifyModal(true)}
+                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-600 transition-colors hover:bg-blue-100"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.96 11.96 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+                  </svg>
+                  Verify contact number
+                </button>
+              )}
+
+              <div id={`recaptcha-card-${machine._id}`} />
             </div>
           </div>
         </div>
 
-        {/* Show more / less */}
-        <button onClick={() => setExpanded(!expanded)} className="mt-4 flex w-full items-center justify-center gap-1 text-sm font-semibold text-neutral-600 transition-colors hover:text-ink">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="mt-4 flex w-full items-center justify-center gap-1 text-sm font-semibold text-neutral-600 transition-colors hover:text-ink"
+        >
           {expanded ? "Show less" : "Show more"}
-          <svg className={`h-4 w-4 transition-transform duration-300 ${expanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <svg
+            className={`h-4 w-4 transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
+            fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"
+          >
             <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
           </svg>
         </button>
@@ -168,7 +263,9 @@ export default function MachineCard({ machine }: { machine: Machine }) {
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-bold text-ink">Edit listing</h2>
-                <p className="text-xs text-amber-600 mt-0.5">⚠ You can only edit this listing once</p>
+                {!isVerified && (
+                  <p className="text-xs text-amber-600 mt-0.5">⚠ Unverified listings can only be edited once</p>
+                )}
               </div>
               <button onClick={() => setEditing(false)} className="text-neutral-400 hover:text-ink">
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -202,7 +299,8 @@ export default function MachineCard({ machine }: { machine: Machine }) {
               <EditField label="Currently available?">
                 <div className="flex gap-3">
                   {(["yes", "no"] as const).map((val) => (
-                    <button key={val} type="button" onClick={() => { updateForm("availability", val); if (val === "yes") updateForm("availableFrom", ""); }}
+                    <button key={val} type="button"
+                      onClick={() => { updateForm("availability", val); if (val === "yes") updateForm("availableFrom", ""); }}
                       className={`rounded-full border px-5 py-2 text-sm font-semibold capitalize transition-colors ${form.availability === val ? "border-ink bg-ink text-white" : "border-neutral-300 bg-white text-ink hover:bg-neutral-50"}`}>
                       {val === "yes" ? "Yes" : "No"}
                     </button>
@@ -214,14 +312,82 @@ export default function MachineCard({ machine }: { machine: Machine }) {
                   <input type="date" min={todayStr} value={form.availableFrom} onChange={(e) => updateForm("availableFrom", e.target.value)} className={inputClass} />
                 </EditField>
               )}
-              {saveError && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{saveError}</p>}
+              {saveError && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{saveError}</p>
+              )}
               <div className="flex gap-3 pt-2">
-                <button onClick={() => setEditing(false)} className="flex-1 rounded-full border border-neutral-300 py-2.5 text-sm font-semibold text-ink hover:bg-neutral-50">Cancel</button>
+                <button onClick={() => setEditing(false)} className="flex-1 rounded-full border border-neutral-300 py-2.5 text-sm font-semibold text-ink hover:bg-neutral-50">
+                  Cancel
+                </button>
                 <button onClick={handleSave} disabled={saving} className="flex-1 rounded-full bg-ink py-2.5 text-sm font-semibold text-white hover:bg-neutral-800 disabled:opacity-60">
                   {saving ? "Saving…" : "Save changes"}
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Verify modal */}
+      {showVerifyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl text-left">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-base font-bold text-ink">Verify contact number</h2>
+              <button
+                onClick={() => { setShowVerifyModal(false); setOtpSent(false); setOtp(""); setVerifyError(""); }}
+                className="text-neutral-400 hover:text-ink"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <p className="mb-4 text-sm text-neutral-500">
+              We will send an OTP to{" "}
+              <span className="font-semibold text-ink">+91 {machine.ownerContact}</span>
+            </p>
+
+            {!otpSent ? (
+              <button
+                onClick={sendOtp}
+                disabled={sendingOtp}
+                className="w-full rounded-full bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+              >
+                {sendingOtp ? "Sending…" : "Send OTP"}
+              </button>
+            ) : (
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="Enter 6-digit OTP"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  className="w-full rounded-xl border border-neutral-300 px-4 py-2.5 text-center text-lg font-semibold tracking-widest text-ink outline-none focus:border-blue-500"
+                />
+                <button
+                  onClick={confirmOtp}
+                  disabled={verifying || otp.length < 6}
+                  className="w-full rounded-full bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                >
+                  {verifying ? "Verifying…" : "Confirm OTP"}
+                </button>
+                <button
+                  onClick={sendOtp}
+                  disabled={sendingOtp}
+                  className="w-full text-xs text-neutral-400 hover:text-ink"
+                >
+                  Resend OTP
+                </button>
+              </div>
+            )}
+
+            {verifyError && (
+              <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{verifyError}</p>
+            )}
           </div>
         </div>
       )}

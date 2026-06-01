@@ -26,9 +26,8 @@ const categoryImageMap: { [key: string]: string } = {
   "Crane": "/crane.webp",
 };
 
-const API_URL = "https://ace-bs8t.onrender.com/api/machines";
-// const API_URL = "http://localhost:5001/api/machines";
-
+// const API_URL = "https://ace-bs8t.onrender.com/api/machines";
+const API_URL = "http://localhost:5001/api/machines";
 
 export default function RegisterForm() {
   const [form, setForm] = useState({
@@ -129,7 +128,6 @@ export default function RegisterForm() {
     setSendingOtp(true);
     setVerifyError("");
     try {
-      // Clean up old recaptcha if exists
       if (recaptchaRef.current) {
         recaptchaRef.current.clear();
         recaptchaRef.current = null;
@@ -158,7 +156,6 @@ export default function RegisterForm() {
     try {
       await confirmationRef.current.confirm(otp);
 
-      // Mark verified in DB
       await fetch(`${API_URL}/${savedMachineId}/verify`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -173,7 +170,7 @@ export default function RegisterForm() {
     }
   }
 
-  // Success screen
+  // ── Success screen ──────────────────────────────────────────────────────────
   if (submitted) {
     return (
       <div className="rounded-2xl border border-green-200 bg-green-50 p-10 text-center">
@@ -210,22 +207,36 @@ export default function RegisterForm() {
           </div>
         )}
 
-        <button
-          onClick={() => {
-            setSubmitted(false);
-            setVerified(false);
-            setSavedMachineId(null);
-            setForm({
-              category: "", craneType: "", company: "", model: "", location: "",
-              pricePerMonth: "", modelYear: "", hoursUsed: "", ownerName: "",
-              ownerContact: "", description: "", availability: "yes", availableFrom: "",
-            });
-            setPreview(null);
-          }}
-          className="mt-4 rounded-full bg-ink px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-neutral-800"
-        >
-          List another machine
-        </button>
+        {/* ── Two action buttons ── */}
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <a
+            href="/machinery"
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-neutral-300 bg-white px-6 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-neutral-50"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+            </svg>
+            Go to listed machines
+          </a>
+          <button
+            onClick={() => {
+              setSubmitted(false);
+              setVerified(false);
+              setSavedMachineId(null);
+              setOtpSent(false);
+              setOtp("");
+              setForm({
+                category: "", craneType: "", company: "", model: "", location: "",
+                pricePerMonth: "", modelYear: "", hoursUsed: "", ownerName: "",
+                ownerContact: "", description: "", availability: "yes", availableFrom: "",
+              });
+              setPreview(null);
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-ink px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-neutral-800"
+          >
+            List another machine
+          </button>
+        </div>
 
         {/* OTP Modal */}
         {showVerifyModal && (
@@ -241,10 +252,10 @@ export default function RegisterForm() {
               </div>
 
               <p className="text-sm text-neutral-500 mb-4">
-                We will send an OTP to <span className="font-semibold text-ink">+91 {form.ownerContact}</span>
+                We will send an OTP to{" "}
+                <span className="font-semibold text-ink">+91 {form.ownerContact}</span>
               </p>
 
-              {/* Invisible recaptcha container */}
               <div id="recaptcha-container" />
 
               {!otpSent ? (
@@ -293,6 +304,7 @@ export default function RegisterForm() {
     );
   }
 
+  // ── Form ───────────────────────────────────────────────────────────────────
   const todayStr = new Date().toISOString().split("T")[0];
 
   return (
@@ -407,7 +419,10 @@ export default function RegisterForm() {
           <input type="date" required min={todayStr} value={form.availableFrom} onChange={(e) => update("availableFrom", e.target.value)} className={`${inputClass} max-w-xs text-center`} />
           {form.availableFrom && (
             <p className="text-sm text-neutral-500">
-              Available from <span className="font-semibold text-ink">{new Date(form.availableFrom).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</span>
+              Available from{" "}
+              <span className="font-semibold text-ink">
+                {new Date(form.availableFrom).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+              </span>
             </p>
           )}
         </div>

@@ -43,14 +43,15 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PUT /api/machines/:id — update listing (max 1 edit)
+// PUT /api/machines/:id — verified owners: unlimited edits, unverified: max 1
 router.put("/:id", async (req, res) => {
   try {
     const machine = await Machine.findById(req.params.id);
     if (!machine) return res.status(404).json({ message: "Machine not found" });
 
-    if (machine.editCount >= 1) {
-      return res.status(403).json({ message: "This listing has already been edited once. No further edits are allowed." });
+    // Only block if NOT verified AND already edited once
+    if (!machine.contactVerified && machine.editCount >= 1) {
+      return res.status(403).json({ message: "Unverified listings can only be edited once. Verify your contact to unlock unlimited edits." });
     }
 
     const {
@@ -65,7 +66,8 @@ router.put("/:id", async (req, res) => {
       availableFrom: availability === "no" && availableFrom ? new Date(availableFrom) : null,
       ...(modelYear !== undefined && { modelYear: Number(modelYear) }),
       ...(hoursUsed !== undefined && { hoursUsed: Number(hoursUsed) }),
-      $inc: { editCount: 1 },
+      // Only increment editCount for unverified owners
+      ...(!machine.contactVerified && { $inc: { editCount: 1 } }),
     };
 
     const updated = await Machine.findByIdAndUpdate(
