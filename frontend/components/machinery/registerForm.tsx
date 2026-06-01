@@ -26,8 +26,8 @@ const categoryImageMap: { [key: string]: string } = {
   "Crane": "/crane.webp",
 };
 
-// const API_URL = "https://ace-bs8t.onrender.com/api/machines";
-const API_URL = "http://localhost:5001/api/machines";
+const API_URL = "https://ace-bs8t.onrender.com/api/machines";
+// const API_URL = "http://localhost:5001/api/machines";
 
 export default function RegisterForm() {
   const [form, setForm] = useState({
