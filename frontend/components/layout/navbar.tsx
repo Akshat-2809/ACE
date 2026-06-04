@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useLang } from "@/context/LanguageContext";
 
 const navLinks = [
   { label: "Browse machines", href: "/machinery" },
@@ -9,11 +10,25 @@ const navLinks = [
   { label: "List your machine", href: "/machinery/register" },
 ];
 
+function TranslateButton({ className }: { className?: string }) {
+  const { lang, toggle } = useLang();
+  return (
+    <button
+      onClick={toggle}
+      className={`flex items-center gap-1.5 rounded-full border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-600 transition-colors hover:border-neutral-400 hover:text-ink ${className}`}
+    >
+      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="m10.5 21 5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 0 1 6-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 0 1-3.827-5.802" />
+      </svg>
+      {lang === "en" ? "हिंदी" : "English"}
+    </button>
+  );
+}
+
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
-  // Shrink + deepen the bar once the user scrolls past the top
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
     onScroll();
@@ -24,9 +39,7 @@ export default function Navbar() {
   return (
     <header
       className={`sticky top-0 z-50 w-full border-b bg-white/85 backdrop-blur-md transition-all duration-300 ${
-        scrolled
-          ? "border-neutral-200 shadow-sm"
-          : "border-transparent"
+        scrolled ? "border-neutral-200 shadow-sm" : "border-transparent"
       }`}
     >
       <nav
@@ -44,7 +57,7 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Desktop links — animated underline on hover */}
+        {/* Desktop links */}
         <div className="hidden items-center gap-10 md:flex">
           {navLinks.map((link) => (
             <Link
@@ -59,7 +72,8 @@ export default function Navbar() {
         </div>
 
         {/* Desktop right side */}
-        <div className="hidden shrink-0 items-center gap-6 md:flex">
+        <div className="hidden shrink-0 items-center gap-3 md:flex">
+          <TranslateButton />
           <Link
             href="/machinery"
             className="rounded-full bg-hivis px-6 py-2.5 text-sm font-bold text-ink shadow-sm transition-all duration-200 hover:bg-hivis-dark hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
@@ -68,7 +82,7 @@ export default function Navbar() {
           </Link>
         </div>
 
-        {/* Mobile hamburger — animated icon morph */}
+        {/* Mobile hamburger */}
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="relative inline-flex h-10 w-10 items-center justify-center rounded-lg text-ink transition-colors hover:bg-neutral-100 md:hidden"
@@ -77,26 +91,14 @@ export default function Navbar() {
         >
           <span className="sr-only">Toggle menu</span>
           <span className="relative block h-4 w-6">
-            <span
-              className={`absolute left-0 block h-0.5 w-6 bg-current transition-all duration-300 ${
-                isOpen ? "top-1.5 rotate-45" : "top-0"
-              }`}
-            />
-            <span
-              className={`absolute left-0 top-1.5 block h-0.5 w-6 bg-current transition-all duration-200 ${
-                isOpen ? "opacity-0" : "opacity-100"
-              }`}
-            />
-            <span
-              className={`absolute left-0 block h-0.5 w-6 bg-current transition-all duration-300 ${
-                isOpen ? "top-1.5 -rotate-45" : "top-3"
-              }`}
-            />
+            <span className={`absolute left-0 block h-0.5 w-6 bg-current transition-all duration-300 ${isOpen ? "top-1.5 rotate-45" : "top-0"}`} />
+            <span className={`absolute left-0 top-1.5 block h-0.5 w-6 bg-current transition-all duration-200 ${isOpen ? "opacity-0" : "opacity-100"}`} />
+            <span className={`absolute left-0 block h-0.5 w-6 bg-current transition-all duration-300 ${isOpen ? "top-1.5 -rotate-45" : "top-3"}`} />
           </span>
         </button>
       </nav>
 
-      {/* Mobile menu — slide + fade open */}
+      {/* Mobile menu */}
       <div
         className={`overflow-hidden border-neutral-200/80 bg-white transition-all duration-300 ease-out md:hidden ${
           isOpen ? "max-h-96 border-t opacity-100" : "max-h-0 opacity-0"
@@ -116,10 +118,19 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+
+          {/* Translate — mobile */}
+          <div
+            style={{ transitionDelay: isOpen ? `${navLinks.length * 60 + 80}ms` : "0ms" }}
+            className={`transition-all duration-300 ${isOpen ? "translate-x-0 opacity-100" : "-translate-x-3 opacity-0"}`}
+          >
+            <TranslateButton className="w-full justify-center rounded-lg py-3 text-base" />
+          </div>
+
           <Link
             href="/machinery"
             onClick={() => setIsOpen(false)}
-            style={{ transitionDelay: isOpen ? `${navLinks.length * 60 + 80}ms` : "0ms" }}
+            style={{ transitionDelay: isOpen ? `${(navLinks.length + 1) * 60 + 80}ms` : "0ms" }}
             className={`mt-3 block rounded-full bg-hivis px-3 py-3 text-center text-base font-bold text-ink transition-all duration-300 hover:bg-hivis-dark ${
               isOpen ? "translate-x-0 opacity-100" : "-translate-x-3 opacity-0"
             }`}

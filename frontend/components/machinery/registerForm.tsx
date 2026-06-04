@@ -36,6 +36,7 @@ export default function RegisterForm() {
     company: "",
     model: "",
     location: "",
+    customLocation: "",
     pricePerMonth: "",
     modelYear: "",
     hoursUsed: "",
@@ -51,7 +52,6 @@ export default function RegisterForm() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
 
-  // Verification states
   const [savedMachineId, setSavedMachineId] = useState<string | null>(null);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
@@ -65,6 +65,7 @@ export default function RegisterForm() {
   const recaptchaRef = useRef<RecaptchaVerifier | null>(null);
 
   const isCrane = form.category === "Crane";
+  const isOtherLocation = form.location === "Other";
   const defaultImage = categoryImageMap[form.category] ?? "/excavator.webp";
 
   const availableCompanies = isCrane
@@ -88,8 +89,16 @@ export default function RegisterForm() {
     if (file) setPreview(URL.createObjectURL(file));
   }
 
+  const finalLocation = isOtherLocation
+    ? form.customLocation.trim()
+    : form.location;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (isOtherLocation && !form.customLocation.trim()) {
+      setError("Please enter your city name.");
+      return;
+    }
     setSubmitting(true);
     setError("");
 
@@ -99,6 +108,7 @@ export default function RegisterForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          location: finalLocation,
           craneType: isCrane ? form.craneType : null,
           pricePerMonth: Number(form.pricePerMonth),
           modelYear: Number(form.modelYear),
@@ -132,12 +142,10 @@ export default function RegisterForm() {
         recaptchaRef.current.clear();
         recaptchaRef.current = null;
       }
-
       const verifier = new RecaptchaVerifier(auth, "recaptcha-container", {
         size: "invisible",
       });
       recaptchaRef.current = verifier;
-
       const phoneNumber = `+91${form.ownerContact}`;
       const confirmation = await signInWithPhoneNumber(auth, phoneNumber, verifier);
       confirmationRef.current = confirmation;
@@ -155,12 +163,10 @@ export default function RegisterForm() {
     setVerifyError("");
     try {
       await confirmationRef.current.confirm(otp);
-
       await fetch(`${API_URL}/${savedMachineId}/verify`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
       });
-
       setVerified(true);
       setShowVerifyModal(false);
     } catch {
@@ -170,7 +176,6 @@ export default function RegisterForm() {
     }
   }
 
-  // ── Success screen ──────────────────────────────────────────────────────────
   if (submitted) {
     return (
       <div className="rounded-2xl border border-green-200 bg-green-50 p-10 text-center">
@@ -182,12 +187,9 @@ export default function RegisterForm() {
         <h3 className="mt-5 text-xl font-semibold text-ink">Machine listed successfully!</h3>
         <p className="mt-2 text-neutral-600">Your machine is now visible to contractors.</p>
 
-        {/* Verify CTA */}
         {!verified ? (
           <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 px-6 py-5">
-            <p className="text-sm font-semibold text-blue-800">
-              Verify your contact number
-            </p>
+            <p className="text-sm font-semibold text-blue-800">Verify your contact number</p>
             <p className="mt-1 text-xs text-blue-600">
               Get a blue ✓ tick next to your number — builds trust with contractors.
             </p>
@@ -207,7 +209,6 @@ export default function RegisterForm() {
           </div>
         )}
 
-        {/* ── Two action buttons ── */}
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <a
             href="/machinery"
@@ -226,9 +227,10 @@ export default function RegisterForm() {
               setOtpSent(false);
               setOtp("");
               setForm({
-                category: "", craneType: "", company: "", model: "", location: "",
-                pricePerMonth: "", modelYear: "", hoursUsed: "", ownerName: "",
-                ownerContact: "", description: "", availability: "yes", availableFrom: "",
+                category: "", craneType: "", company: "", model: "",
+                location: "", customLocation: "", pricePerMonth: "",
+                modelYear: "", hoursUsed: "", ownerName: "", ownerContact: "",
+                description: "", availability: "yes", availableFrom: "",
               });
               setPreview(null);
             }}
@@ -238,7 +240,6 @@ export default function RegisterForm() {
           </button>
         </div>
 
-        {/* OTP Modal */}
         {showVerifyModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl text-left">
@@ -304,7 +305,6 @@ export default function RegisterForm() {
     );
   }
 
-  // ── Form ───────────────────────────────────────────────────────────────────
   const todayStr = new Date().toISOString().split("T")[0];
 
   return (
@@ -385,10 +385,28 @@ export default function RegisterForm() {
       {/* Location + Price */}
       <div className="grid gap-6 sm:grid-cols-2">
         <Field label="Location">
-          <select required value={form.location} onChange={(e) => update("location", e.target.value)} className={selectClass}>
+          <select
+            required
+            value={form.location}
+            onChange={(e) => { update("location", e.target.value); update("customLocation", ""); }}
+            className={selectClass}
+          >
             <option value="" disabled>Select location</option>
-            {[...locations, ...(!locations.includes("Gwalior") ? ["Gwalior"] : [])].sort().map((l: string) => <option key={l} value={l}>{l}</option>)}
+            {[...locations, ...(!locations.includes("Gwalior") ? ["Gwalior"] : [])].sort().map((l: string) => (
+              <option key={l} value={l}>{l}</option>
+            ))}
           </select>
+          {isOtherLocation && (
+            <input
+              type="text"
+              required
+              placeholder="Enter your city name"
+              value={form.customLocation}
+              onChange={(e) => update("customLocation", e.target.value.replace(/[^a-zA-Z\s]/g, ""))}
+              className={`${inputClass} mt-2`}
+              autoFocus
+            />
+          )}
         </Field>
         <Field label="Rate per month (₹)">
           <input type="number" required min={0} placeholder="e.g. 15000" value={form.pricePerMonth} onChange={(e) => update("pricePerMonth", e.target.value)} className={inputClass} />

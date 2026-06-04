@@ -49,15 +49,20 @@ router.put("/:id", async (req, res) => {
     const machine = await Machine.findById(req.params.id);
     if (!machine) return res.status(404).json({ message: "Machine not found" });
 
-    // Only block if NOT verified AND already edited once
     if (!machine.contactVerified && machine.editCount >= 1) {
-      return res.status(403).json({ message: "Unverified listings can only be edited once. Verify your contact to unlock unlimited edits." });
+      return res.status(403).json({
+        message: "Unverified listings can only be edited once. Verify your contact to unlock unlimited edits.",
+      });
     }
 
     const {
       pricePerMonth, location, ownerName, ownerContact,
       description, availability, availableFrom, modelYear, hoursUsed,
     } = req.body;
+
+    const contactChanged =
+      ownerContact &&
+      ownerContact.replace(/\s/g, "") !== machine.ownerContact.replace(/\s/g, "");
 
     const updates = {
       pricePerMonth: Number(pricePerMonth),
@@ -66,7 +71,7 @@ router.put("/:id", async (req, res) => {
       availableFrom: availability === "no" && availableFrom ? new Date(availableFrom) : null,
       ...(modelYear !== undefined && { modelYear: Number(modelYear) }),
       ...(hoursUsed !== undefined && { hoursUsed: Number(hoursUsed) }),
-      // Only increment editCount for unverified owners
+      ...(contactChanged && { contactVerified: false }),
       ...(!machine.contactVerified && { $inc: { editCount: 1 } }),
     };
 
@@ -82,7 +87,18 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// PATCH /api/machines/:id/verify — mark contact as verified
+// DELETE /api/machines/:id
+router.delete("/:id", async (req, res) => {
+  try {
+    const machine = await Machine.findByIdAndDelete(req.params.id);
+    if (!machine) return res.status(404).json({ message: "Machine not found" });
+    res.json({ success: true, message: "Listing deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to delete machine", error: error.message });
+  }
+});
+
+// PATCH /api/machines/:id/verify
 router.patch("/:id/verify", async (req, res) => {
   try {
     const machine = await Machine.findByIdAndUpdate(

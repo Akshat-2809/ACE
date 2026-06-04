@@ -18,6 +18,9 @@ export default function MachineCard({ machine }: { machine: Machine }) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
@@ -72,18 +75,44 @@ export default function MachineCard({ machine }: { machine: Machine }) {
           pricePerMonth: Number(form.pricePerMonth),
           modelYear: form.modelYear ? Number(form.modelYear) : undefined,
           hoursUsed: form.hoursUsed ? Number(form.hoursUsed) : undefined,
-          availableFrom: form.availability === "no" && form.availableFrom ? form.availableFrom : null,
+          availableFrom:
+            form.availability === "no" && form.availableFrom
+              ? form.availableFrom
+              : null,
         }),
       });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.message || "Failed to save");
       }
+      const updated = await res.json();
+      if (!updated.contactVerified) {
+        setVerifiedNow(false);
+      }
       window.location.reload();
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      const id = machine._id ?? machine.id;
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to delete");
+      }
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -194,6 +223,7 @@ export default function MachineCard({ machine }: { machine: Machine }) {
                 <p className="pt-1 leading-relaxed text-neutral-500">{machine.description}</p>
               )}
 
+              {/* Call dealer */}
               <a
                 href={`tel:${machine.ownerContact.replace(/\s/g, "")}`}
                 className="mt-2 flex items-center justify-center gap-2 rounded-full bg-hivis px-4 py-2.5 text-sm font-bold text-ink transition-colors hover:bg-hivis-dark"
@@ -204,18 +234,31 @@ export default function MachineCard({ machine }: { machine: Machine }) {
                 Call dealer
               </a>
 
+              {/* Edit + Delete side by side */}
               {canEdit && (
-                <button
-                  onClick={() => setEditing(true)}
-                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-full border border-neutral-300 px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-neutral-50"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
-                  </svg>
-                  Edit listing
-                </button>
+                <div className="mt-1 grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="flex items-center justify-center gap-1.5 rounded-full border border-neutral-300 px-3 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-neutral-50"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+                    </svg>
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="flex items-center justify-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                    </svg>
+                    Delete
+                  </button>
+                </div>
               )}
 
+              {/* Locked message */}
               {!canEdit && (
                 <p className="mt-1 flex items-center justify-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-xs text-neutral-400">
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -225,6 +268,7 @@ export default function MachineCard({ machine }: { machine: Machine }) {
                 </p>
               )}
 
+              {/* Verify button */}
               {!isVerified && (
                 <button
                   onClick={() => setShowVerifyModal(true)}
@@ -236,8 +280,6 @@ export default function MachineCard({ machine }: { machine: Machine }) {
                   Verify contact number
                 </button>
               )}
-
-              <div id={`recaptcha-card-${machine._id}`} />
             </div>
           </div>
         </div>
@@ -255,6 +297,38 @@ export default function MachineCard({ machine }: { machine: Machine }) {
           </svg>
         </button>
       </div>
+
+      {/* Delete confirmation modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl text-left">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 mx-auto">
+              <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+              </svg>
+            </div>
+            <h2 className="mt-4 text-center text-lg font-bold text-ink">Delete listing?</h2>
+            <p className="mt-2 text-center text-sm text-neutral-500">
+              This will permanently remove <span className="font-semibold text-ink">{displayName}</span> from ACE. This cannot be undone.
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 rounded-full border border-neutral-300 py-2.5 text-sm font-semibold text-ink hover:bg-neutral-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 rounded-full bg-red-600 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                {deleting ? "Deleting…" : "Yes, delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit modal */}
       {editing && (
@@ -285,7 +359,23 @@ export default function MachineCard({ machine }: { machine: Machine }) {
                 <input type="text" value={form.ownerName} onChange={(e) => updateForm("ownerName", e.target.value.replace(/[^a-zA-Z\s]/g, ""))} className={inputClass} placeholder="Letters and spaces only" />
               </EditField>
               <EditField label="Contact number">
-                <input type="tel" value={form.ownerContact} onChange={(e) => updateForm("ownerContact", e.target.value.replace(/\D/g, "").slice(0, 10))} maxLength={10} className={inputClass} placeholder="10 digits" />
+                <input
+                  type="tel"
+                  value={form.ownerContact}
+                  onChange={(e) => updateForm("ownerContact", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                  maxLength={10}
+                  className={inputClass}
+                  placeholder="10 digits"
+                />
+                {isVerified &&
+                  form.ownerContact.replace(/\s/g, "") !== machine.ownerContact.replace(/\s/g, "") && (
+                    <p className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-600">
+                      <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                      </svg>
+                      Changing your number will remove your verified status. You will need to verify again.
+                    </p>
+                  )}
               </EditField>
               <EditField label="Model year">
                 <input type="number" min={1990} max={2030} value={form.modelYear} onChange={(e) => updateForm("modelYear", e.target.value)} className={inputClass} />
@@ -348,6 +438,9 @@ export default function MachineCard({ machine }: { machine: Machine }) {
               We will send an OTP to{" "}
               <span className="font-semibold text-ink">+91 {machine.ownerContact}</span>
             </p>
+
+            {/* Recaptcha — only exists when modal is open */}
+            <div id={`recaptcha-card-${machine._id}`} />
 
             {!otpSent ? (
               <button
