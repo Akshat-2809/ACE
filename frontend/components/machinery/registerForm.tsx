@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   categories,
   craneTypes,
@@ -11,14 +12,9 @@ import {
   craneModelsByTypeAndCompany,
   locations,
 } from "@/lib/machineOptions";
-import { auth } from "@/lib/firebases";
-import {
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  ConfirmationResult,
-} from "firebase/auth";
 import { useLang } from "@/context/LanguageContext";
 import { translations } from "@/lib/translation";
+import { useAuth } from "@/context/AuthContext";
 
 const categoryImageMap: { [key: string]: string } = {
   "Excavator": "/excavator.webp",
@@ -28,12 +24,20 @@ const categoryImageMap: { [key: string]: string } = {
   "Crane": "/crane.webp",
 };
 
-const API_URL = "https://ace-bs8t.onrender.com/api/machines";
-// const API_URL = "http://localhost:5001/api/machines";
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function RegisterForm() {
   const { lang } = useLang();
   const t = translations[lang];
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  // Redirect to login if not logged in
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/auth?redirect=/machinery/register");
+    }
+  }, [user, loading, router]);
 
   const [form, setForm] = useState({
     category: "",
@@ -45,29 +49,28 @@ export default function RegisterForm() {
     pricePerMonth: "",
     modelYear: "",
     hoursUsed: "",
-    ownerName: "",
-    ownerContact: "",
+    ownerName: user?.name ?? "",
+    ownerContact: user?.phone ?? "",
     description: "",
     availability: "yes",
     availableFrom: "",
   });
 
+  // Pre-fill name and phone from user account
+  useEffect(() => {
+    if (user) {
+      setForm((prev) => ({
+        ...prev,
+        ownerName: prev.ownerName || user.name,
+        ownerContact: prev.ownerContact || user.phone,
+      }));
+    }
+  }, [user]);
+
   const [preview, setPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
-
-  const [savedMachineId, setSavedMachineId] = useState<string | null>(null);
-  const [showVerifyModal, setShowVerifyModal] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState("");
-  const [verifying, setVerifying] = useState(false);
-  const [verifyError, setVerifyError] = useState("");
-  const [verified, setVerified] = useState(false);
-  const [sendingOtp, setSendingOtp] = useState(false);
-
-  const confirmationRef = useRef<ConfirmationResult | null>(null);
-  const recaptchaRef = useRef<RecaptchaVerifier | null>(null);
 
   const isCrane = form.category === "Crane";
   const isOtherLocation = form.location === "Other";
@@ -108,9 +111,10 @@ export default function RegisterForm() {
     setError("");
 
     try {
-      const res = await fetch(API_URL, {
+      const res = await fetch(`${API_URL}/api/machines`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           ...form,
           location: finalLocation,
@@ -125,11 +129,9 @@ export default function RegisterForm() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || "Something went wrong");
+        throw new Error(data.message || "Something went wrong");
       }
 
-      const saved = await res.json();
-      setSavedMachineId(saved._id);
       setSubmitted(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
@@ -139,47 +141,9 @@ export default function RegisterForm() {
     }
   }
 
-  async function sendOtp() {
-    setSendingOtp(true);
-    setVerifyError("");
-    try {
-      if (recaptchaRef.current) {
-        recaptchaRef.current.clear();
-        recaptchaRef.current = null;
-      }
-      const verifier = new RecaptchaVerifier(auth, "recaptcha-container", {
-        size: "invisible",
-      });
-      recaptchaRef.current = verifier;
-      const phoneNumber = `+91${form.ownerContact}`;
-      const confirmation = await signInWithPhoneNumber(auth, phoneNumber, verifier);
-      confirmationRef.current = confirmation;
-      setOtpSent(true);
-    } catch (error) {
-      setVerifyError(error instanceof Error ? error.message : "Failed to send OTP");
-    } finally {
-      setSendingOtp(false);
-    }
-  }
-
-  async function confirmOtp() {
-    if (!confirmationRef.current || !savedMachineId) return;
-    setVerifying(true);
-    setVerifyError("");
-    try {
-      await confirmationRef.current.confirm(otp);
-      await fetch(`${API_URL}/${savedMachineId}/verify`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-      });
-      setVerified(true);
-      setShowVerifyModal(false);
-    } catch {
-      setVerifyError("Invalid OTP. Please try again.");
-    } finally {
-      setVerifying(false);
-    }
-  }
+  // Show nothing while checking auth
+  if (loading) return null;
+  if (!user) return null;
 
   if (submitted) {
     return (
@@ -192,29 +156,8 @@ export default function RegisterForm() {
         <h3 className="mt-5 text-xl font-semibold text-ink">{t.regSuccessTitle}</h3>
         <p className="mt-2 text-neutral-600">{t.regSuccessSubtext}</p>
 
-        {!verified ? (
-          <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 px-6 py-5">
-            <p className="text-sm font-semibold text-blue-800">{t.regVerifyTitle}</p>
-            <p className="mt-1 text-xs text-blue-600">{t.regVerifySubtext}</p>
-            <button
-              onClick={() => setShowVerifyModal(true)}
-              className="mt-3 rounded-full bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-            >
-              {t.regVerifyBtn}
-            </button>
-          </div>
-        ) : (
-          <div className="mt-6 flex items-center justify-center gap-2 text-sm font-semibold text-blue-600">
-            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-              <path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12a4.49 4.49 0 0 1-1.549 3.397 4.491 4.491 0 0 1-1.307 3.497 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.491 4.491 0 0 1-3.497-1.307 4.491 4.491 0 0 1-1.307-3.497A4.49 4.49 0 0 1 2.25 12a4.49 4.49 0 0 1 1.549-3.397 4.491 4.491 0 0 1 1.307-3.497 4.491 4.491 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clipRule="evenodd" />
-            </svg>
-            {t.regVerifiedText}
-          </div>
-        )}
-
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
           
-          <a
             href="/machinery"
             className="inline-flex items-center justify-center gap-2 rounded-full border border-neutral-300 bg-white px-6 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-neutral-50"
           >
@@ -226,14 +169,12 @@ export default function RegisterForm() {
           <button
             onClick={() => {
               setSubmitted(false);
-              setVerified(false);
-              setSavedMachineId(null);
-              setOtpSent(false);
-              setOtp("");
               setForm({
                 category: "", craneType: "", company: "", model: "",
                 location: "", customLocation: "", pricePerMonth: "",
-                modelYear: "", hoursUsed: "", ownerName: "", ownerContact: "",
+                modelYear: "", hoursUsed: "",
+                ownerName: user?.name ?? "",
+                ownerContact: user?.phone ?? "",
                 description: "", availability: "yes", availableFrom: "",
               });
               setPreview(null);
@@ -243,68 +184,6 @@ export default function RegisterForm() {
             {t.regListAnother}
           </button>
         </div>
-
-        {showVerifyModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl text-left">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-base font-bold text-ink">{t.otpTitle}</h2>
-                <button onClick={() => setShowVerifyModal(false)} className="text-neutral-400 hover:text-ink">
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              <p className="text-sm text-neutral-500 mb-4">
-                {t.otpSubtext}{" "}
-                <span className="font-semibold text-ink">+91 {form.ownerContact}</span>
-              </p>
-
-              <div id="recaptcha-container" />
-
-              {!otpSent ? (
-                <button
-                  onClick={sendOtp}
-                  disabled={sendingOtp}
-                  className="w-full rounded-full bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-                >
-                  {sendingOtp ? t.otpSending : t.otpSendBtn}
-                </button>
-              ) : (
-                <div className="space-y-3">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    placeholder={t.otpPlaceholder}
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    className="w-full rounded-xl border border-neutral-300 px-4 py-2.5 text-center text-lg font-semibold tracking-widest text-ink outline-none focus:border-blue-500"
-                  />
-                  <button
-                    onClick={confirmOtp}
-                    disabled={verifying || otp.length < 6}
-                    className="w-full rounded-full bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-                  >
-                    {verifying ? t.otpConfirming : t.otpConfirmBtn}
-                  </button>
-                  <button
-                    onClick={sendOtp}
-                    disabled={sendingOtp}
-                    className="w-full text-xs text-neutral-400 hover:text-ink"
-                  >
-                    {t.otpResend}
-                  </button>
-                </div>
-              )}
-
-              {verifyError && (
-                <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{verifyError}</p>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     );
   }
@@ -389,12 +268,7 @@ export default function RegisterForm() {
       {/* Location + Price */}
       <div className="grid gap-6 sm:grid-cols-2">
         <Field label={t.regLocation}>
-          <select
-            required
-            value={form.location}
-            onChange={(e) => { update("location", e.target.value); update("customLocation", ""); }}
-            className={selectClass}
-          >
+          <select required value={form.location} onChange={(e) => { update("location", e.target.value); update("customLocation", ""); }} className={selectClass}>
             <option value="" disabled>{t.regSelectLocation}</option>
             {[...locations, ...(!locations.includes("Gwalior") ? ["Gwalior"] : [])].sort().map((l: string) => (
               <option key={l} value={l}>{l}</option>
@@ -450,13 +324,29 @@ export default function RegisterForm() {
         </div>
       )}
 
-      {/* Owner details */}
+      {/* Owner details — pre-filled from account, read-only */}
       <div className="grid gap-6 sm:grid-cols-2">
         <Field label={t.regOwnerName}>
-          <input type="text" required placeholder={t.regOwnerNamePlaceholder} value={form.ownerName} onChange={(e) => update("ownerName", e.target.value.replace(/[0-9]/g, ""))} className={inputClass} />
+          <input
+            type="text"
+            required
+            placeholder={t.regOwnerNamePlaceholder}
+            value={form.ownerName}
+            onChange={(e) => update("ownerName", e.target.value.replace(/[0-9]/g, ""))}
+            className={inputClass}
+          />
         </Field>
         <Field label={t.regContact}>
-          <input type="tel" required maxLength={10} inputMode="numeric" placeholder={t.regContactPlaceholder} value={form.ownerContact} onChange={(e) => update("ownerContact", e.target.value.slice(0, 10))} className={inputClass} />
+          <input
+            type="tel"
+            required
+            maxLength={10}
+            inputMode="numeric"
+            placeholder={t.regContactPlaceholder}
+            value={form.ownerContact}
+            onChange={(e) => update("ownerContact", e.target.value.slice(0, 10))}
+            className={inputClass}
+          />
         </Field>
       </div>
 

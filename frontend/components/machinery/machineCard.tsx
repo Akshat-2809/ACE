@@ -1,36 +1,20 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { Machine } from "@/types/machine";
-import { auth } from "@/lib/firebases";
-import {
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  ConfirmationResult,
-} from "firebase/auth";
+import { useAuth } from "@/context/AuthContext";
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL}/api/machines`;
 
 export default function MachineCard({ machine }: { machine: Machine }) {
+  const { user } = useAuth();
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
-
-  const [showVerifyModal, setShowVerifyModal] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState("");
-  const [sendingOtp, setSendingOtp] = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  const [verifyError, setVerifyError] = useState("");
-  const [verifiedNow, setVerifiedNow] = useState(false);
-
-  const confirmationRef = useRef<ConfirmationResult | null>(null);
-  const recaptchaRef = useRef<RecaptchaVerifier | null>(null);
 
   const [form, setForm] = useState({
     pricePerMonth: String(machine.pricePerMonth ?? ""),
@@ -47,10 +31,12 @@ export default function MachineCard({ machine }: { machine: Machine }) {
   });
 
   const isAvailable = machine.availability === "yes";
-  const isVerified = machine.contactVerified || verifiedNow;
-  const canEdit = isVerified || (machine.editCount ?? 0) < 1;
   const displayName = `${machine.company} ${machine.model}`;
   const todayStr = new Date().toISOString().split("T")[0];
+
+  // Owner check — show edit/delete only to the owner
+  const isOwner = user && machine.ownerId &&
+    user._id.toString() === machine.ownerId.toString();
 
   const availableFromFormatted = machine.availableFrom
     ? new Date(machine.availableFrom).toLocaleDateString("en-IN", {
@@ -70,6 +56,7 @@ export default function MachineCard({ machine }: { machine: Machine }) {
       const res = await fetch(`${API_URL}/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           ...form,
           pricePerMonth: Number(form.pricePerMonth),
@@ -85,10 +72,6 @@ export default function MachineCard({ machine }: { machine: Machine }) {
         const data = await res.json();
         throw new Error(data.message || "Failed to save");
       }
-      const updated = await res.json();
-      if (!updated.contactVerified) {
-        setVerifiedNow(false);
-      }
       window.location.reload();
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Something went wrong");
@@ -103,6 +86,7 @@ export default function MachineCard({ machine }: { machine: Machine }) {
       const id = machine._id ?? machine.id;
       const res = await fetch(`${API_URL}/${id}`, {
         method: "DELETE",
+        credentials: "include",
       });
       if (!res.ok) {
         const data = await res.json();
@@ -113,51 +97,6 @@ export default function MachineCard({ machine }: { machine: Machine }) {
       console.error(err);
     } finally {
       setDeleting(false);
-    }
-  }
-
-  async function sendOtp() {
-    setSendingOtp(true);
-    setVerifyError("");
-    try {
-      if (recaptchaRef.current) {
-        recaptchaRef.current.clear();
-        recaptchaRef.current = null;
-      }
-      const verifier = new RecaptchaVerifier(auth, `recaptcha-card-${machine._id}`, {
-        size: "invisible",
-      });
-      recaptchaRef.current = verifier;
-      const phoneNumber = `+91${machine.ownerContact.replace(/\D/g, "")}`;
-      const confirmation = await signInWithPhoneNumber(auth, phoneNumber, verifier);
-      confirmationRef.current = confirmation;
-      setOtpSent(true);
-    } catch (err) {
-      setVerifyError(err instanceof Error ? err.message : "Failed to send OTP");
-    } finally {
-      setSendingOtp(false);
-    }
-  }
-
-  async function confirmOtp() {
-    if (!confirmationRef.current) return;
-    setVerifying(true);
-    setVerifyError("");
-    try {
-      await confirmationRef.current.confirm(otp);
-      const id = machine._id ?? machine.id;
-      await fetch(`${API_URL}/${id}/verify`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-      });
-      setVerifiedNow(true);
-      setShowVerifyModal(false);
-      setOtpSent(false);
-      setOtp("");
-    } catch {
-      setVerifyError("Invalid OTP. Please try again.");
-    } finally {
-      setVerifying(false);
     }
   }
 
@@ -204,19 +143,7 @@ export default function MachineCard({ machine }: { machine: Machine }) {
           <div className="min-h-0">
             <div className="space-y-2.5 border-t border-neutral-100 pt-4 text-sm">
               <Detail label="Dealer" value={machine.ownerName} />
-
-              <div className="flex items-center justify-between">
-                <span className="text-neutral-400">Contact</span>
-                <span className="flex items-center gap-1.5 font-medium text-ink">
-                  {machine.ownerContact}
-                  {isVerified && (
-                    <svg className="h-4 w-4 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
-                      <path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12a4.49 4.49 0 0 1-1.549 3.397 4.491 4.491 0 0 1-1.307 3.497 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.491 4.491 0 0 1-3.497-1.307 4.491 4.491 0 0 1-1.307-3.497A4.49 4.49 0 0 1 2.25 12a4.49 4.49 0 0 1 1.549-3.397 4.491 4.491 0 0 1 1.307-3.497 4.491 4.491 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clipRule="evenodd" />
-                    </svg>
-                  )}
-                </span>
-              </div>
-
+              <Detail label="Contact" value={machine.ownerContact} />
               <Detail label="Model year" value={String(machine.modelYear ?? "—")} />
               <Detail label="Hours used" value={machine.hoursUsed != null ? `${machine.hoursUsed.toLocaleString("en-IN")} hrs` : "—"} />
               {machine.description && (
@@ -224,7 +151,7 @@ export default function MachineCard({ machine }: { machine: Machine }) {
               )}
 
               {/* Call dealer */}
-              <a
+              
                 href={`tel:${machine.ownerContact.replace(/\s/g, "")}`}
                 className="mt-2 flex items-center justify-center gap-2 rounded-full bg-hivis px-4 py-2.5 text-sm font-bold text-ink transition-colors hover:bg-hivis-dark"
               >
@@ -234,8 +161,8 @@ export default function MachineCard({ machine }: { machine: Machine }) {
                 Call dealer
               </a>
 
-              {/* Edit + Delete side by side */}
-              {canEdit && (
+              {/* Edit + Delete — only for owner */}
+              {isOwner && (
                 <div className="mt-1 grid grid-cols-2 gap-2">
                   <button
                     onClick={() => setEditing(true)}
@@ -256,29 +183,6 @@ export default function MachineCard({ machine }: { machine: Machine }) {
                     Delete
                   </button>
                 </div>
-              )}
-
-              {/* Locked message */}
-              {!canEdit && (
-                <p className="mt-1 flex items-center justify-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-xs text-neutral-400">
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-                  </svg>
-                  Listing locked — verify contact to edit again
-                </p>
-              )}
-
-              {/* Verify button */}
-              {!isVerified && (
-                <button
-                  onClick={() => setShowVerifyModal(true)}
-                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-600 transition-colors hover:bg-blue-100"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.96 11.96 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
-                  </svg>
-                  Verify contact number
-                </button>
               )}
             </div>
           </div>
@@ -301,7 +205,7 @@ export default function MachineCard({ machine }: { machine: Machine }) {
       {/* Delete confirmation modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl text-left">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 mx-auto">
               <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
@@ -312,17 +216,10 @@ export default function MachineCard({ machine }: { machine: Machine }) {
               This will permanently remove <span className="font-semibold text-ink">{displayName}</span> from ACE. This cannot be undone.
             </p>
             <div className="mt-6 flex gap-3">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 rounded-full border border-neutral-300 py-2.5 text-sm font-semibold text-ink hover:bg-neutral-50"
-              >
+              <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 rounded-full border border-neutral-300 py-2.5 text-sm font-semibold text-ink hover:bg-neutral-50">
                 Cancel
               </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex-1 rounded-full bg-red-600 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
-              >
+              <button onClick={handleDelete} disabled={deleting} className="flex-1 rounded-full bg-red-600 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">
                 {deleting ? "Deleting…" : "Yes, delete"}
               </button>
             </div>
@@ -335,12 +232,7 @@ export default function MachineCard({ machine }: { machine: Machine }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-xl max-h-[90vh]">
             <div className="mb-5 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-bold text-ink">Edit listing</h2>
-                {!isVerified && (
-                  <p className="text-xs text-amber-600 mt-0.5">⚠ Unverified listings can only be edited once</p>
-                )}
-              </div>
+              <h2 className="text-lg font-bold text-ink">Edit listing</h2>
               <button onClick={() => setEditing(false)} className="text-neutral-400 hover:text-ink">
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -356,26 +248,10 @@ export default function MachineCard({ machine }: { machine: Machine }) {
                 <input type="text" value={form.location} onChange={(e) => updateForm("location", e.target.value)} className={inputClass} />
               </EditField>
               <EditField label="Owner name">
-                <input type="text" value={form.ownerName} onChange={(e) => updateForm("ownerName", e.target.value.replace(/[^a-zA-Z\s]/g, ""))} className={inputClass} placeholder="Letters and spaces only" />
+                <input type="text" value={form.ownerName} onChange={(e) => updateForm("ownerName", e.target.value.replace(/[^a-zA-Z\s]/g, ""))} className={inputClass} />
               </EditField>
               <EditField label="Contact number">
-                <input
-                  type="tel"
-                  value={form.ownerContact}
-                  onChange={(e) => updateForm("ownerContact", e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  maxLength={10}
-                  className={inputClass}
-                  placeholder="10 digits"
-                />
-                {isVerified &&
-                  form.ownerContact.replace(/\s/g, "") !== machine.ownerContact.replace(/\s/g, "") && (
-                    <p className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-600">
-                      <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                      </svg>
-                      Changing your number will remove your verified status. You will need to verify again.
-                    </p>
-                  )}
+                <input type="tel" value={form.ownerContact} onChange={(e) => updateForm("ownerContact", e.target.value.replace(/\D/g, "").slice(0, 10))} maxLength={10} className={inputClass} />
               </EditField>
               <EditField label="Model year">
                 <input type="number" min={1990} max={2030} value={form.modelYear} onChange={(e) => updateForm("modelYear", e.target.value)} className={inputClass} />
@@ -414,73 +290,6 @@ export default function MachineCard({ machine }: { machine: Machine }) {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Verify modal */}
-      {showVerifyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl text-left">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-bold text-ink">Verify contact number</h2>
-              <button
-                onClick={() => { setShowVerifyModal(false); setOtpSent(false); setOtp(""); setVerifyError(""); }}
-                className="text-neutral-400 hover:text-ink"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <p className="mb-4 text-sm text-neutral-500">
-              We will send an OTP to{" "}
-              <span className="font-semibold text-ink">+91 {machine.ownerContact}</span>
-            </p>
-
-            {/* Recaptcha — only exists when modal is open */}
-            <div id={`recaptcha-card-${machine._id}`} />
-
-            {!otpSent ? (
-              <button
-                onClick={sendOtp}
-                disabled={sendingOtp}
-                className="w-full rounded-full bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-              >
-                {sendingOtp ? "Sending…" : "Send OTP"}
-              </button>
-            ) : (
-              <div className="space-y-3">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  placeholder="Enter 6-digit OTP"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  className="w-full rounded-xl border border-neutral-300 px-4 py-2.5 text-center text-lg font-semibold tracking-widest text-ink outline-none focus:border-blue-500"
-                />
-                <button
-                  onClick={confirmOtp}
-                  disabled={verifying || otp.length < 6}
-                  className="w-full rounded-full bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-                >
-                  {verifying ? "Verifying…" : "Confirm OTP"}
-                </button>
-                <button
-                  onClick={sendOtp}
-                  disabled={sendingOtp}
-                  className="w-full text-xs text-neutral-400 hover:text-ink"
-                >
-                  Resend OTP
-                </button>
-              </div>
-            )}
-
-            {verifyError && (
-              <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{verifyError}</p>
-            )}
           </div>
         </div>
       )}
