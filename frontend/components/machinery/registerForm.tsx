@@ -17,6 +17,8 @@ import {
   signInWithPhoneNumber,
   ConfirmationResult,
 } from "firebase/auth";
+import { useLang } from "@/context/LanguageContext";
+import { translations } from "@/lib/translation";
 
 const categoryImageMap: { [key: string]: string } = {
   "Excavator": "/excavator.webp",
@@ -30,6 +32,9 @@ const API_URL = "https://ace-bs8t.onrender.com/api/machines";
 // const API_URL = "http://localhost:5001/api/machines";
 
 export default function RegisterForm() {
+  const { lang } = useLang();
+  const t = translations[lang];
+
   const [form, setForm] = useState({
     category: "",
     craneType: "",
@@ -96,7 +101,7 @@ export default function RegisterForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isOtherLocation && !form.customLocation.trim()) {
-      setError("Please enter your city name.");
+      setError(t.regErrorCity);
       return;
     }
     setSubmitting(true);
@@ -184,20 +189,18 @@ export default function RegisterForm() {
             <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
           </svg>
         </div>
-        <h3 className="mt-5 text-xl font-semibold text-ink">Machine listed successfully!</h3>
-        <p className="mt-2 text-neutral-600">Your machine is now visible to contractors.</p>
+        <h3 className="mt-5 text-xl font-semibold text-ink">{t.regSuccessTitle}</h3>
+        <p className="mt-2 text-neutral-600">{t.regSuccessSubtext}</p>
 
         {!verified ? (
           <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 px-6 py-5">
-            <p className="text-sm font-semibold text-blue-800">Verify your contact number</p>
-            <p className="mt-1 text-xs text-blue-600">
-              Get a blue ✓ tick next to your number — builds trust with contractors.
-            </p>
+            <p className="text-sm font-semibold text-blue-800">{t.regVerifyTitle}</p>
+            <p className="mt-1 text-xs text-blue-600">{t.regVerifySubtext}</p>
             <button
               onClick={() => setShowVerifyModal(true)}
               className="mt-3 rounded-full bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
             >
-              Verify now
+              {t.regVerifyBtn}
             </button>
           </div>
         ) : (
@@ -205,11 +208,12 @@ export default function RegisterForm() {
             <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
               <path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12a4.49 4.49 0 0 1-1.549 3.397 4.491 4.491 0 0 1-1.307 3.497 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.491 4.491 0 0 1-3.497-1.307 4.491 4.491 0 0 1-1.307-3.497A4.49 4.49 0 0 1 2.25 12a4.49 4.49 0 0 1 1.549-3.397 4.491 4.491 0 0 1 1.307-3.497 4.491 4.491 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clipRule="evenodd" />
             </svg>
-            Contact verified
+            {t.regVerifiedText}
           </div>
         )}
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          
           <a
             href="/machinery"
             className="inline-flex items-center justify-center gap-2 rounded-full border border-neutral-300 bg-white px-6 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-neutral-50"
@@ -217,7 +221,7 @@ export default function RegisterForm() {
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
             </svg>
-            Go to listed machines
+            {t.regGoToListings}
           </a>
           <button
             onClick={() => {
@@ -236,7 +240,7 @@ export default function RegisterForm() {
             }}
             className="inline-flex items-center justify-center gap-2 rounded-full bg-ink px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-neutral-800"
           >
-            List another machine
+            {t.regListAnother}
           </button>
         </div>
 
@@ -244,7 +248,7 @@ export default function RegisterForm() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl text-left">
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-base font-bold text-ink">Verify contact number</h2>
+                <h2 className="text-base font-bold text-ink">{t.otpTitle}</h2>
                 <button onClick={() => setShowVerifyModal(false)} className="text-neutral-400 hover:text-ink">
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -253,7 +257,7 @@ export default function RegisterForm() {
               </div>
 
               <p className="text-sm text-neutral-500 mb-4">
-                We will send an OTP to{" "}
+                {t.otpSubtext}{" "}
                 <span className="font-semibold text-ink">+91 {form.ownerContact}</span>
               </p>
 
@@ -265,7 +269,7 @@ export default function RegisterForm() {
                   disabled={sendingOtp}
                   className="w-full rounded-full bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
                 >
-                  {sendingOtp ? "Sending…" : "Send OTP"}
+                  {sendingOtp ? t.otpSending : t.otpSendBtn}
                 </button>
               ) : (
                 <div className="space-y-3">
@@ -273,7 +277,7 @@ export default function RegisterForm() {
                     type="text"
                     inputMode="numeric"
                     maxLength={6}
-                    placeholder="Enter 6-digit OTP"
+                    placeholder={t.otpPlaceholder}
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                     className="w-full rounded-xl border border-neutral-300 px-4 py-2.5 text-center text-lg font-semibold tracking-widest text-ink outline-none focus:border-blue-500"
@@ -283,14 +287,14 @@ export default function RegisterForm() {
                     disabled={verifying || otp.length < 6}
                     className="w-full rounded-full bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
                   >
-                    {verifying ? "Verifying…" : "Confirm OTP"}
+                    {verifying ? t.otpConfirming : t.otpConfirmBtn}
                   </button>
                   <button
                     onClick={sendOtp}
                     disabled={sendingOtp}
                     className="w-full text-xs text-neutral-400 hover:text-ink"
                   >
-                    Resend OTP
+                    {t.otpResend}
                   </button>
                 </div>
               )}
@@ -311,13 +315,13 @@ export default function RegisterForm() {
     <form onSubmit={handleSubmit} className="space-y-8">
       {/* Photo upload */}
       <div>
-        <label className="mb-2 block text-sm font-semibold text-ink">Machine photo</label>
+        <label className="mb-2 block text-sm font-semibold text-ink">{t.regPhotoLabel}</label>
         <div className="flex items-center gap-5">
           <div className="relative h-28 w-36 shrink-0 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
             <Image src={preview ?? defaultImage} alt="Machine preview" fill className="object-cover" sizes="144px" />
             {!preview && (
               <span className="absolute inset-x-0 bottom-0 bg-black/50 py-1 text-center text-[10px] font-medium text-white">
-                {form.category ? `${form.category} (default)` : "Default image"}
+                {form.category ? `${form.category} (${t.regPhotoDefault})` : t.regPhotoDefault}
               </span>
             )}
           </div>
@@ -326,34 +330,34 @@ export default function RegisterForm() {
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
               </svg>
-              Upload photo
+              {t.regPhotoBtn}
               <input type="file" accept="image/*" onChange={handleImage} className="hidden" />
             </label>
-            <p className="mt-2 text-xs text-neutral-400">A default image is used if you skip this.</p>
+            <p className="mt-2 text-xs text-neutral-400">{t.regPhotoHint}</p>
           </div>
         </div>
       </div>
 
       {/* Category + Crane type / Company */}
       <div className="grid gap-6 sm:grid-cols-2">
-        <Field label="Machine type">
+        <Field label={t.regMachineType}>
           <select required value={form.category} onChange={(e) => { update("category", e.target.value); update("craneType", ""); update("company", ""); update("model", ""); }} className={selectClass}>
-            <option value="" disabled>Select type</option>
+            <option value="" disabled>{t.regSelectType}</option>
             {categories.map((c: string) => <option key={c} value={c}>{c}</option>)}
           </select>
         </Field>
 
         {isCrane ? (
-          <Field label="Crane type">
+          <Field label={t.regCraneType}>
             <select required value={form.craneType} onChange={(e) => { update("craneType", e.target.value); update("company", ""); update("model", ""); }} className={selectClass}>
-              <option value="" disabled>Select crane type</option>
-              {craneTypes.map((t: string) => <option key={t} value={t}>{t}</option>)}
+              <option value="" disabled>{t.regSelectCraneType}</option>
+              {craneTypes.map((t2: string) => <option key={t2} value={t2}>{t2}</option>)}
             </select>
           </Field>
         ) : (
-          <Field label="Company / brand">
+          <Field label={t.regCompany}>
             <select required value={form.company} disabled={!form.category} onChange={(e) => { update("company", e.target.value); update("model", ""); }} className={`${selectClass} disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400`}>
-              <option value="" disabled>{form.category ? "Select company" : "Select a type first"}</option>
+              <option value="" disabled>{form.category ? t.regSelectCompany : t.regSelectTypeFirst}</option>
               {availableCompanies.map((c: string) => <option key={c} value={c}>{c}</option>)}
             </select>
           </Field>
@@ -361,9 +365,9 @@ export default function RegisterForm() {
       </div>
 
       {isCrane && (
-        <Field label="Company / brand">
+        <Field label={t.regCompany}>
           <select required value={form.company} disabled={!form.craneType} onChange={(e) => { update("company", e.target.value); update("model", ""); }} className={`${selectClass} disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400`}>
-            <option value="" disabled>{form.craneType ? "Select company" : "Select a crane type first"}</option>
+            <option value="" disabled>{form.craneType ? t.regSelectCompany : t.regSelectCraneFirst}</option>
             {availableCompanies.map((c: string) => <option key={c} value={c}>{c}</option>)}
           </select>
         </Field>
@@ -371,27 +375,27 @@ export default function RegisterForm() {
 
       {/* Model + Model year */}
       <div className="grid gap-6 sm:grid-cols-2">
-        <Field label="Model">
+        <Field label={t.regModel}>
           <select required value={form.model} onChange={(e) => update("model", e.target.value)} disabled={!form.company} className={`${selectClass} disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400`}>
-            <option value="" disabled>{form.company ? "Select model" : "Select a company first"}</option>
+            <option value="" disabled>{form.company ? t.regSelectModel : t.regSelectCompanyFirst}</option>
             {availableModels.map((m: string) => <option key={m} value={m}>{m}</option>)}
           </select>
         </Field>
-        <Field label="Model year">
+        <Field label={t.regModelYear}>
           <input type="number" required min={1990} max={2026} maxLength={4} placeholder="e.g. 2022" value={form.modelYear} onChange={(e) => update("modelYear", e.target.value.slice(0, 4))} className={inputClass} />
         </Field>
       </div>
 
       {/* Location + Price */}
       <div className="grid gap-6 sm:grid-cols-2">
-        <Field label="Location">
+        <Field label={t.regLocation}>
           <select
             required
             value={form.location}
             onChange={(e) => { update("location", e.target.value); update("customLocation", ""); }}
             className={selectClass}
           >
-            <option value="" disabled>Select location</option>
+            <option value="" disabled>{t.regSelectLocation}</option>
             {[...locations, ...(!locations.includes("Gwalior") ? ["Gwalior"] : [])].sort().map((l: string) => (
               <option key={l} value={l}>{l}</option>
             ))}
@@ -400,7 +404,7 @@ export default function RegisterForm() {
             <input
               type="text"
               required
-              placeholder="Enter your city name"
+              placeholder={t.regCustomLocationPlaceholder}
               value={form.customLocation}
               onChange={(e) => update("customLocation", e.target.value.replace(/[^a-zA-Z\s]/g, ""))}
               className={`${inputClass} mt-2`}
@@ -408,23 +412,23 @@ export default function RegisterForm() {
             />
           )}
         </Field>
-        <Field label="Rate per month (₹)">
+        <Field label={t.regRate}>
           <input type="number" required min={0} placeholder="e.g. 15000" value={form.pricePerMonth} onChange={(e) => update("pricePerMonth", e.target.value)} className={inputClass} />
         </Field>
       </div>
 
       {/* Hours used + Availability */}
       <div className="grid gap-6 sm:grid-cols-2">
-        <Field label="Hours used">
+        <Field label={t.regHoursUsed}>
           <input type="number" required min={0} placeholder="e.g. 3400" value={form.hoursUsed} onChange={(e) => update("hoursUsed", e.target.value)} className={inputClass} />
         </Field>
         <div>
-          <label className="mb-3 block text-sm font-semibold text-ink">Currently available?</label>
+          <label className="mb-3 block text-sm font-semibold text-ink">{t.regAvailability}</label>
           <div className="flex gap-3">
             {(["yes", "no"] as const).map((val) => (
               <button key={val} type="button" onClick={() => { update("availability", val); if (val === "yes") update("availableFrom", ""); }}
                 className={`rounded-full border px-6 py-2.5 text-sm font-semibold capitalize transition-colors ${form.availability === val ? "border-ink bg-ink text-white" : "border-neutral-300 bg-white text-ink hover:bg-mist"}`}>
-                {val === "yes" ? "Yes" : "No"}
+                {val === "yes" ? t.regAvailableYes : t.regAvailableNo}
               </button>
             ))}
           </div>
@@ -433,11 +437,11 @@ export default function RegisterForm() {
 
       {form.availability === "no" && (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 px-6 py-5">
-          <label className="text-sm font-semibold text-ink">From which date will the machine be available?</label>
+          <label className="text-sm font-semibold text-ink">{t.regAvailableFromLabel}</label>
           <input type="date" required min={todayStr} value={form.availableFrom} onChange={(e) => update("availableFrom", e.target.value)} className={`${inputClass} max-w-xs text-center`} />
           {form.availableFrom && (
             <p className="text-sm text-neutral-500">
-              Available from{" "}
+              {t.regAvailableFrom}{" "}
               <span className="font-semibold text-ink">
                 {new Date(form.availableFrom).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
               </span>
@@ -448,22 +452,22 @@ export default function RegisterForm() {
 
       {/* Owner details */}
       <div className="grid gap-6 sm:grid-cols-2">
-        <Field label="Owner / dealer name">
-          <input type="text" required placeholder="e.g. XYZ Construction" value={form.ownerName} onChange={(e) => update("ownerName", e.target.value.replace(/[0-9]/g, ""))} className={inputClass} />
+        <Field label={t.regOwnerName}>
+          <input type="text" required placeholder={t.regOwnerNamePlaceholder} value={form.ownerName} onChange={(e) => update("ownerName", e.target.value.replace(/[0-9]/g, ""))} className={inputClass} />
         </Field>
-        <Field label="Contact number">
-          <input type="tel" required maxLength={10} inputMode="numeric" placeholder="98765 43210" value={form.ownerContact} onChange={(e) => update("ownerContact", e.target.value.slice(0, 10))} className={inputClass} />
+        <Field label={t.regContact}>
+          <input type="tel" required maxLength={10} inputMode="numeric" placeholder={t.regContactPlaceholder} value={form.ownerContact} onChange={(e) => update("ownerContact", e.target.value.slice(0, 10))} className={inputClass} />
         </Field>
       </div>
 
-      <Field label="Description">
-        <textarea rows={2} placeholder="Add details — capacity, condition, operator availability, etc." value={form.description} onChange={(e) => update("description", e.target.value)} className={`${inputClass} resize-none`} />
+      <Field label={t.regDescription}>
+        <textarea rows={2} placeholder={t.regDescPlaceholder} value={form.description} onChange={(e) => update("description", e.target.value)} className={`${inputClass} resize-none`} />
       </Field>
 
       {error && <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>}
 
       <button type="submit" disabled={submitting} className="w-full rounded-full bg-hivis px-6 py-4 text-base font-bold text-ink transition-all hover:bg-hivis-dark hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60 sm:w-auto sm:px-12">
-        {submitting ? "Listing…" : "List my machine"}
+        {submitting ? t.regSubmitting : t.regSubmitBtn}
       </button>
     </form>
   );

@@ -1,16 +1,71 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
+import Image from "next/image";
 import MachineCard from "@/components/machinery/machineCard";
 import type { Machine } from "@/types/machine";
+import { useLang } from "@/context/LanguageContext";
+import { translations } from "@/lib/translation";
 
 const API_URL = "https://ace-bs8t.onrender.com/api/machines";
+
+function CraneLoader() {
+  return (
+    <div className="flex flex-col items-center justify-center py-24 gap-6">
+      <style>{`
+        @keyframes crane-swing {
+          0%, 100% { transform: rotate(-6deg); }
+          50%       { transform: rotate(6deg); }
+        }
+        @keyframes crane-dot {
+          0%, 100% { transform: translateY(0); opacity: 0.35; }
+          50%       { transform: translateY(-7px); opacity: 1; }
+        }
+      `}</style>
+
+      <div
+        style={{
+          animation: "crane-swing 2s ease-in-out infinite",
+          transformOrigin: "top center",
+        }}
+      >
+        <Image
+          src="/crane-loader.webp"
+          alt="Loading…"
+          width={100}
+          height={100}
+          style={{ objectFit: "contain" }}
+        />
+      </div>
+
+      {/* Bouncing dots */}
+      <div className="flex items-center gap-2">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            style={{
+              display: "inline-block",
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              backgroundColor: "#FFD000",
+              animation: `crane-dot 0.9s ease-in-out ${i * 0.18}s infinite`,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function MachineryPage() {
   const [machines, setMachines] = useState<Machine[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
+  const { lang } = useLang();
+  const t = translations[lang];
 
   useEffect(() => {
     async function loadMachines() {
@@ -43,15 +98,15 @@ export default function MachineryPage() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-          Available machines
+          {t.browseTitle}
         </h1>
         <p className="mt-3 text-lg text-neutral-600">
-          Find and contact machine owners near you
+          {t.browseSubtext}
         </p>
       </div>
 
       {/* Search bar */}
-      <div className="mb-10">
+      <div className="mb-8">
         <div className="relative max-w-xl">
           <svg
             className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400"
@@ -63,39 +118,42 @@ export default function MachineryPage() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by machine, type, or location…"
+            placeholder={t.browseSearchPlaceholder}
             className="w-full rounded-full border border-neutral-300 bg-white py-3.5 pl-12 pr-4 text-base text-ink outline-none transition-colors placeholder:text-neutral-400 focus:border-ink"
           />
         </div>
         {!loading && !error && (
           <p className="mt-3 text-sm text-neutral-500">
-            {filtered.length} {filtered.length === 1 ? "machine" : "machines"} found
+            {filtered.length} {filtered.length === 1 ? t.browseMachineFound : t.browseMachinesFound}
           </p>
         )}
       </div>
 
-      {/* Loading state */}
-      {loading && (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="animate-pulse overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-              <div className="aspect-[4/3] bg-neutral-200" />
-              <div className="space-y-3 p-5">
-                <div className="h-5 w-2/3 rounded bg-neutral-200" />
-                <div className="h-4 w-1/2 rounded bg-neutral-100" />
-                <div className="h-4 w-1/3 rounded bg-neutral-100" />
-              </div>
-            </div>
-          ))}
-        </div>
+      {/* Can't find what you need banner */}
+      {!loading && !error && (
+        <Link
+          href="/machinery/request"
+          className="mb-10 flex items-center justify-between gap-4 rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 px-6 py-4 transition-colors hover:border-neutral-400 hover:bg-mist"
+        >
+          <div>
+            <p className="font-semibold text-ink">{t.browseCantFind}</p>
+            <p className="mt-0.5 text-sm text-neutral-500">{t.browseCantFindSub}</p>
+          </div>
+          <svg className="h-5 w-5 shrink-0 text-neutral-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+          </svg>
+        </Link>
       )}
+
+      {/* Crane loader */}
+      {loading && <CraneLoader />}
 
       {/* Error state */}
       {error && !loading && (
         <div className="rounded-2xl border border-red-200 bg-red-50 py-16 text-center">
           <p className="font-semibold text-red-600">{error}</p>
           <p className="mt-1 text-sm text-red-400">
-            Make sure the backend server is running on port 5001.
+            Make sure the backend server is running.
           </p>
         </div>
       )}
@@ -111,11 +169,11 @@ export default function MachineryPage() {
         ) : (
           <div className="rounded-2xl border border-dashed border-neutral-300 py-20 text-center text-neutral-400">
             {machines.length === 0
-              ? "No machines listed yet. Be the first to list one!"
-              : `No machines match "${query}". Try a different search.`}
+              ? t.browseNoMachines
+              : `${t.browseNoMatch} "${query}". ${t.browseTryDifferent}`}
           </div>
         )
       )}
     </div>
   );
-} 
+}

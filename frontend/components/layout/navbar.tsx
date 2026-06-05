@@ -3,12 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useLang } from "@/context/LanguageContext";
-
-const navLinks = [
-  { label: "Browse machines", href: "/machinery" },
-  { label: "How it works", href: "/#how-it-works" },
-  { label: "List your machine", href: "/machinery/register" },
-];
+import { translations } from "@/lib/translation";
 
 function TranslateButton({ className }: { className?: string }) {
   const { lang, toggle } = useLang();
@@ -28,6 +23,16 @@ function TranslateButton({ className }: { className?: string }) {
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { lang } = useLang();
+  const t = translations[lang];
+
+  // Inside component so it re-renders when lang changes
+  const navLinks = [
+    { label: t.navHowItWorks, href: "/#how-it-works" },
+    { label: t.navNeedMachine, href: "/machinery/request" },
+    { label: t.navListMachine, href: "/machinery/register" },
+    { label: t.navBrowse, href: "/machinery" },
+  ];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -58,7 +63,7 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop links */}
-        <div className="hidden items-center gap-10 md:flex">
+        <div className="hidden items-center gap-8 md:flex">
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -78,7 +83,7 @@ export default function Navbar() {
             href="/machinery"
             className="rounded-full bg-hivis px-6 py-2.5 text-sm font-bold text-ink shadow-sm transition-all duration-200 hover:bg-hivis-dark hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
           >
-            Find machines
+            {t.navFindMachines}
           </Link>
         </div>
 
@@ -101,7 +106,7 @@ export default function Navbar() {
       {/* Mobile menu */}
       <div
         className={`overflow-hidden border-neutral-200/80 bg-white transition-all duration-300 ease-out md:hidden ${
-          isOpen ? "max-h-96 border-t opacity-100" : "max-h-0 opacity-0"
+          isOpen ? "max-h-[500px] border-t opacity-100" : "max-h-0 opacity-0"
         }`}
       >
         <div className="space-y-1 px-6 py-4">
@@ -135,7 +140,7 @@ export default function Navbar() {
               isOpen ? "translate-x-0 opacity-100" : "-translate-x-3 opacity-0"
             }`}
           >
-            Find machines
+            {t.navFindMachines}
           </Link>
         </div>
       </div>
